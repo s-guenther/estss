@@ -50,7 +50,7 @@ appreciated.
 ## Author
 
 ESTSS - Energy System Time Series Suite
-Copyright (C) 2018\
+Copyright (C) 2023\
 Sebastian Günther\
 sebastian.guenther@ifes.uni-hannover.de
 
