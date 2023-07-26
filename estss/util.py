@@ -2,18 +2,53 @@
 """Module that gathers various non-specific methods and utility functions that
 are not associated to a specific sub-module or are used by multiple ones"""
 
-import copy
-
 from matplotlib import pyplot as plt
 import numpy as np
 import pandas as pd
+from scipy.interpolate import PchipInterpolator
 
-import estss.init as init
+
+# ##
+# ## File Input/Output
+# ##
+
+def read_df_if_string(df_or_string):
+    """Gets a pandas DataFrame as input or an file path to a pandas
+    DataFrame as input, return pandas Dataframe"""
+    if isinstance(df_or_string, pd.DataFrame):
+        return df_or_string
+    elif isinstance(df_or_string, str):
+        return pd.read_pickle(df_or_string)
+    else:
+        raise ValueError(f'df_or_string must be a pandas Dataframe object or '
+                         f'a string encoding a filepath, got type('
+                         f'df_or_string) = {type(df_or_string)}')
+
+
+# ##
+# ## Time Series Manipulation
+# ##
+
+def resample_ts(ts, samples=1000):
+    """Resamples a timeless time series vector `ts` with an arbitrary
+    number of points to `samples` points via pchip Interpolation."""
+    origpoints = np.linspace(0, samples-1, len(ts))
+    ipoints = np.linspace(0, samples-1, samples)
+    interpolator = PchipInterpolator(origpoints, ts)
+    return interpolator(ipoints)
+
+
+def norm_meanmaxabs(ts):
+    """Returns a time series `ts` normalized to mean=0 and maxabs = 1. May
+    raise ZeroDivisionError"""
+    tsmod = ts - np.mean(ts)
+    maxval = np.max(np.abs(tsmod))
+    return tsmod/maxval
+
 
 # ##
 # ## Plot a dataframe of time series
 # ##
-
 
 def plot_df_ts(df_ts, n=128, which='head', grid=(8, 4)):
     """Plots a number of time series from a dataframe.
@@ -94,15 +129,12 @@ def _plot_sub_in_ts(ts, start, stop, endpoint=False, samples=1000):
     raw_ts time series, to visualize which section was taken."""
     if endpoint:
         stop += 1
-    orig_section = copy.copy(ts[start:stop])
-    mean_ts = np.mean(orig_section)
-    max_ts = np.max(np.abs(orig_section - mean_ts))
+    section = ts[start:stop]
     torig = np.arange(len(ts))
-    tres = np.linspace(start, stop, samples)
-    initpchip = init._single_raw_to_init(  # noqa
-        ts, start, stop, endpoint, samples)
+    tsec = np.linspace(start, stop, samples)
+    section = resample_ts(section, samples)
     plt.plot(torig, ts, '-', linewidth=3)
-    plt.plot(tres, initpchip*max_ts + mean_ts, '-')
+    plt.plot(tsec, section, '-')
     plt.legend(['Original', 'PChip'])
 
 

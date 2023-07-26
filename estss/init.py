@@ -4,15 +4,15 @@ from disk. This data is the starting point for Superposition + Concatenation
 and the Expansion Step.
 Relevant method are
     get_init_ts()       to load data
-    ees_ts              to generate from ifes-ees raw data"""
+    ees_ts()            to generate from ifes-ees raw data"""
 
-import copy
 import random
 import warnings
 
 import numpy as np
 import pandas as pd
-from scipy.interpolate import PchipInterpolator
+
+from estss import util
 
 
 def get_init_ts(df_file='data/init_ts.pkl'):
@@ -60,25 +60,22 @@ def _single_raw_to_init(raw_ts, start, stop, endpoint=False, samples=1000):
     if endpoint:
         stop += 1
 
-    init = copy.copy(raw_ts[start:stop])
+    init = raw_ts[start:stop]
     init = np.nan_to_num(init)
     if len(init) == samples:
         init -= np.mean(init)
         return init/np.max(np.abs(init))
 
-    origpoints = np.linspace(0, samples-1, len(init))
-    ipoints = np.linspace(0, samples-1, samples)
-    interpolator = PchipInterpolator(origpoints, init)
-    init = interpolator(ipoints)
+    init = util.resample_ts(init, samples)
 
-    init -= np.mean(init)
-    maxval = np.max(np.abs(init))
-    if maxval == 0.0:
+    try:
+        init = util.norm_meanmaxabs(init)
+    except ZeroDivisionError:
         warnings.warn('Zero time series encountered, returning rand sig '
                       'instead.')
         return _single_raw_to_init(np.random.rand(100), 0, 99,
                                    endpoint, samples)
-    return init/maxval
+    return init
 
 
 def _raw_to_init_from_string(selection, datafile='data/ees_ts.pkl'):
