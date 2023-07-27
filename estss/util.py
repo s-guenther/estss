@@ -46,6 +46,12 @@ def norm_meanmaxabs(ts):
     return tsmod/maxval
 
 
+def norm_maxabs(ts):
+    """Returns a time series `ts` normalized to maxabs = 1 (but arbitrary
+    mean). May raise ZeroDivisionError"""
+    return ts/np.max(np.abs(ts))
+
+
 # ##
 # ## Plot a dataframe of time series
 # ##
@@ -107,7 +113,8 @@ def plot_df_ts(df_ts, n=128, which='head', grid=(8, 4)):
             if isig < n_ts:
                 ax[k, l].plot([0, 1000], [0, 0], color='gray')
                 ax[k, l].plot(df.iloc[:, isig])
-                ax[k, l].text(0, 0, str(isig), ha='left', va='bottom',
+                ax[k, l].text(0, 0, str(df.columns[isig]),
+                              ha='left', va='bottom',
                               transform=ax[k, l].transAxes)
             ax[k, l].set_xticks([])
             ax[k, l].set_yticks([])
