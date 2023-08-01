@@ -6,8 +6,9 @@ This includes:
 - signal processing chains:
   chaining the following signal processors: (a) expander (b) compressor
   (c, d, e) curtailment (top, bottom, mid) (f) time distortion
+  to modify an input time series
 - fix boundary conditions:
-  (a) sign (b) initial condition
+  (a) mean (b) sign (c) initial condition
 
 Relevant methods in this module:
     get_expanded_ts()
@@ -15,11 +16,11 @@ Relevant methods in this module:
     expand()
     recombine()
     modify()
-    fix_bounds()"""
+    fix_constraints()"""
 
 # The module is structured as follows
 # - get_expanded_ts()
-# - gen_expanded_ts() mainly invokes:
+# - compute_expanded_ts() mainly invokes:
 #   - expand() mainly invokes:
 #     - recombine() mainly invokes:
 #       - _concat_strings()
@@ -29,9 +30,11 @@ Relevant methods in this module:
 #     - modify() mainly invokes:
 #       - sig_proc_chain_strings()
 #       - sig_proc_chain()
-#     - fix_bounds() mainly invokes:
+#     - fix_constraints() mainly invokes:
+#       - _fix_mean()
 #       - _fix_sign()
-#       - _fix_init()
+#       - _fix_bounds()
+#      - verify()
 
 from collections import abc
 from copy import copy
@@ -55,7 +58,7 @@ def get_expanded_ts():
     pass
 
 
-def gen_expanded_ts():
+def compute_expanded_ts():
     pass
 
 
@@ -130,7 +133,7 @@ def recombine(df_ts='data/init_ts.pkl', nout_concat=2**13, nout_spos=2**15,
     return df_merged, strings
 
 
-def modify(df_ts=None, nout_per_nin=8, kwargs_mod=None):
+def modify(df_ts='data/recombined_ts.pkl', nout_per_nin=8, kwargs_mod=None):
     """Takes a time series dataframe and modifies the time series within by
     randomly generated signal processing chains.
 
@@ -174,13 +177,56 @@ def modify(df_ts=None, nout_per_nin=8, kwargs_mod=None):
     if kwargs_mod is None:
         kwargs_mod = dict()
     df_ts = util.read_df_if_string(df_ts)
+
     n_in = df_ts.columns.size
     spc_strings = _sig_proc_chain_strings(nout_per_nin, n_in, **kwargs_mod)
     df_spc = _sig_proc_chain(spc_strings, df_ts)
     return df_spc, spc_strings
 
 
-def fix_bounds():
+def fix_constraints(df_ts='data/expanded_ts.pkl', kind='only_negative'):
+    """Takes a time series dataframe `df_ts` and fixes the constraints that
+    may be violated.
+
+    I.e., it ensures that:
+    - The time series all have a negative mean value
+    - The time series are either strictly negative valued or scrictly both
+      negative and positive valued
+    - The time series shall have its maximum energy at t=0 and minimum at
+      t=tend (energy ^= integral of time series)
+
+    Parameters
+    ----------
+    df_ts : pandas.DataFrame or str, default: 'data/init_ts.pkl'
+        mxn Dataframe, where n = number of time series, m = number of points
+        in time. If string is passed, a valid path to a dataframe object is
+        expected and loaded
+    kind : str, default: 'only negative'
+        must be in ['only_negative', 'only_plusminus']
+        Depending on the chosen value, it will transform all all time series
+        in a way that they are strictly negative valued or in a way that
+        they strictly have both negative and positive values
+
+    Returns
+    -------
+    df_ts : pandas.DataFrame
+        With the same size as the input data frame"""
+    if kind not in (options := ['only_negative', 'only_plusminus']):
+        raise ValueError(f'kind must be in {options}, found kind = {kind}')
+
+    if df_ts is None:
+        print('No df passed, calculating with modify() first...')
+        df_ts = modify(df_ts=None)
+        print('...finished')
+    df_ts = util.read_df_if_string(df_ts)
+
+    df_ts = _fix_mean(df_ts)
+    df_ts = _fix_sign(df_ts, kind)
+    df_ts = _fix_bounds(df_ts)
+    return df_ts
+
+
+def verify():
     pass
 
 
@@ -314,8 +360,8 @@ def _append_two_ts_with_overlap(ts1, ts2, overlap):
     _append_ts_with_overlap() that concatenates an arbitrary amount of time
     series."""
     ts = np.hstack([ts1[:-overlap],
-                     ts1[-overlap:] + ts2[:overlap],
-                     ts2[overlap:]])
+                    ts1[-overlap:] + ts2[:overlap],
+                    ts2[overlap:]])
     return ts
 
 
@@ -652,14 +698,159 @@ def _single_sig_proc_chain(ts, fcns, paras):
     ts_mod = ts
     for fcn, para in zip(fcns, paras):
         ts_mod = fcn(ts_mod, para)
-    # check if mean is negative, if not, move it to ensure this
-    # TODO FIXME put this into fix bounds
-    if (ts_mean := np.mean(ts_mod)) >= -0.01:
-        ts_mod = _shift(ts, -2 * np.abs(ts_mean) - 0.01)
     return ts_mod
+
+
+# ##
+# ## Fix Constraints
+# ##
+# ## ##########################################################################
+
+
+# ##
+# ## Fix Mean
+# ##
+
+def _fix_mean(df_ts):
+    """Applies _single_fix_mean() for every time series in the time series
+    dataframe `df_ts`"""
+    return df_ts.apply(_single_fix_mean)
+
+
+def _single_fix_mean(ts, tol=0.01, rand_move_range=0.1):
+    """Fixes the mean value of a time series to a negative mean value,
+    i.e. if it had a positive mean value of x, it will be inverted to have a
+    negative mean value of -x afterwards.
+    The logic is a little bit more complex for near-zero-mean-values defined
+    by `tol`: If the mean is between -`tol` and +`tol`, the time series will be
+    shifted (and then normalized) to have a mean value between -`tol` and
+    `rand_move_range`"""
+    if (mts := np.mean(ts)) <= -tol:
+        return ts
+    elif mts >= tol:
+        return -ts
+    elif -tol < mts < tol:
+        ts = util.norm_maxabs(ts - 2*tol - uniform(tol, rand_move_range))
+        if -tol < np.mean(ts) < tol:
+            ts = _single_fix_mean(ts)
+        return ts
+    else:
+        raise RuntimeError('If-...-else reached presumably impossible path')
+
+
+# ##
+# ## Fix Sign
+# ##
+
+def _fix_sign(df_ts, kind='only_negative'):
+    """Applies _single_fix_sign_to_only_negative() if `kind` = 'only_negative'
+    and _single_fix_sign_to_only_plusmins() if `kind` = 'only_plusminus' to
+    the whole time series dataframe `df_ts`"""
+    if kind not in (options := ['only_negative', 'only_plusminus']):
+        raise ValueError(f'kind must be in {options}, found kind = {kind}')
+
+    if kind == 'only_negative':
+        return df_ts.apply(_single_fix_sign_to_only_negative)
+    elif kind == 'only_plusminus':
+        return df_ts.apply(_single_fix_sign_to_only_plusminus)
+    else:
+        raise RuntimeError('If-...-else reached presumably impossible path')
+
+
+def _single_fix_sign_to_only_negative(ts):
+    """If the time series `ts` does have positive parts, it is shifted and
+    normalized afterwards so that the maximum positive value becomes zero"""
+    if (max_ts := np.max(ts)) <= 0:
+        return ts
+    else:
+        return util.norm_maxabs(ts - max_ts)
+
+
+def _single_fix_sign_to_only_plusminus(ts):
+    """If the time series `ts` does only have negative parts, it is shifted
+    in a way that it has both positive and negative parts. The shift
+    performed is randomly selected between max(ts) and mean(ts). The result is
+    normalized again afterwards."""
+    if (max_ts := np.max(ts)) >= 0:
+        return ts
+    else:
+        rand_shift = uniform(max_ts, float(np.mean(ts)))
+        return util.norm_maxabs(ts - rand_shift)
 
 
 # ##
 # ## Fix Boundary Conditions
 # ##
-# ## ##########################################################################
+
+def _fix_bounds(df_ts):
+    """Applies _single_fix_bounds() to every time series in the time series
+    data frame 'df_ts'"""
+    return df_ts.apply(_single_fix_bounds)
+
+
+# TODO refactor logic, especially the next() method in _single_find_index_max
+def _single_fix_bounds(ts):
+    """ Fixes the initial and end boundary condition of a time series `ts`. The
+    boundary condition is that the time series shall have its maximum energy
+    (integral) at t=0 and its minimum energy at t=tend. If this condition is
+    not fullfilled, the function will overlay a quarter sinus wave at the
+    beginning or end with the neccessary energy content to shift the time
+    series smoothly down in the neccessary regions.
+
+    Several options were tried to achieve this and were compared empirically.
+    Empirically the best results were delivered by an overlay with a
+    quarter sine function, other options tried where constant, exponential,
+    linear, flipping, loop_checking."""
+    while _single_find_index_max(ts) != -1:
+        ts = _single_fix_bound_start(ts)
+    ts = ts[::-1]
+    while _single_find_index_max(ts) != -1:
+        ts = _single_fix_bound_start(ts)
+    return util.norm_maxabs(ts[::-1])
+
+
+def _single_fix_bound_start(ts):
+    """will change the ts so that the integral will be minimal at the
+    beginning."""
+    index_max = _single_find_index_max(ts)
+    if np.size(index_max) > 0:
+        if np.size(index_max) > 1:
+            index_max = index_max[0]
+        if index_max != -1:
+            ts_fixed = _sin_overlay_start(ts, index_max)
+            return ts_fixed
+    else:
+        return ts
+
+
+def _single_find_index_max(ts):
+    """will find the index of the maximum energy content of the storage
+    of the first timespan where the storage would be overcharged"""
+    energy = np.cumsum(ts)
+    index_energy_positive = np.argwhere([energy > 0])
+    if len(index_energy_positive) == 0:
+        index_max = -1
+    else:
+        diff_index_energy = np.diff(index_energy_positive[:, 1])
+        index_max_interval = \
+            next((i for i, x in enumerate(diff_index_energy[0:]) if x != 1),
+                 None)
+        if index_max_interval is None:
+            index_max_interval = len(index_energy_positive) - 1
+        index_max = \
+            np.argmax(energy[0:index_energy_positive[index_max_interval][1]+1])
+    return index_max
+
+
+def _sin_overlay_start(ts, index_max, safety=1 + 1e-5):
+    """This functions adds a sine function as an overlay to the time series.
+    The maximum of the sine function is at the start of the time series. The
+    safety ensures that a rounding error would not result in mathematical
+    problems."""
+    diff_energy_max = np.cumsum(ts)[index_max]
+    vec_sin = np.cos(np.arange(index_max+1) * np.pi/2/(index_max+1))
+    sum_sin = np.sum(vec_sin)
+    factor_sin = np.abs(diff_energy_max/sum_sin)*safety
+    ts[0:index_max + 1] = ts[0:index_max + 1] - vec_sin * factor_sin
+    ts = ts / np.max(np.abs(ts))
+    return ts

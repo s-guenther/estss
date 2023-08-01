@@ -38,7 +38,7 @@ def get_init_ts(df_file='data/init_ts.pkl'):
 # ## IfES-EES time series related functions
 # ##
 
-def ees_ts(datafile='data/ees_ts.pkl', selectionsfile='data/ees_selections'):
+def _ees_ts(datafile='data/ees_ts.pkl', selectionsfile='data/ees_selections'):
     """Loads the ifes-ees confidential data, extracts sections and saves
     to data/init.pkl.
     Does only work if raw data and selection file is available."""
@@ -71,8 +71,8 @@ def _single_raw_to_init(raw_ts, start, stop, endpoint=False, samples=1000):
     try:
         init = util.norm_meanmaxabs(init)
     except ZeroDivisionError:
-        warnings.warn('Zero time series encountered, returning rand sig '
-                      'instead.')
+        warnings.warn('Zero time series encountered, returning random time '
+                      'series instead.')
         return _single_raw_to_init(np.random.rand(100), 0, 99,
                                    endpoint, samples)
     return init
