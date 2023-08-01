@@ -34,7 +34,7 @@ Relevant methods in this module:
 #       - _fix_mean()
 #       - _fix_sign()
 #       - _fix_bounds()
-#      - verify()
+#      - verify_constraints()
 
 from collections import abc
 from copy import copy
@@ -223,7 +223,7 @@ def fix_constraints(df_ts, kind='only_negative'):
     return df_ts
 
 
-def verify(df_ts, kind='only_negative'):
+def verify_constraints(df_ts, kind='only_negative'):
     """Takes a time series dataframe `df_ts` and verifies that all
     constraints of all time series are fulfilled. Removes time series that
     do not satisfy the constraints.
@@ -233,7 +233,7 @@ def verify(df_ts, kind='only_negative'):
     - maxabs is 1
     - are strictly negative (`kind='only_negative'`)
       or strictly positive/negative (`kind='only_posneg'`)
-    - init/end boundaray condition is fulfilled (energy never exceeds zero)
+    - init/end boundary condition is fulfilled (energy never exceeds zero)
 
     Although the subroutines of fix_constraints() ensure all this,
     they might damage a constraint by fixing another one (_fix_bounds()
@@ -259,6 +259,7 @@ def verify(df_ts, kind='only_negative'):
 
     df_ts = util.read_df_if_string(df_ts)
 
+    # test all constraints
     df_mean = df_ts.apply(lambda ts: np.mean(ts) < 0)
     df_maxabs = df_ts.apply(lambda ts: np.max(np.abs(ts)) == 1)
 
@@ -272,7 +273,10 @@ def verify(df_ts, kind='only_negative'):
     df_binit = df_ts.apply(lambda ts: np.max(np.cumsum(ts)) <= 0)
     df_bend = df_ts.apply(lambda ts: np.max(np.cumsum(ts[::-1])) <= 0)
 
-    return df_mean, df_maxabs, df_strict, df_binit, df_bend
+    # remove ts in df_ts, where constraints are unfullfilled
+    df_all_valid = df_mean & df_maxabs & df_strict & df_binit & df_bend
+
+    return df_ts.loc[:, df_all_valid]
 
 
 # ##
@@ -843,13 +847,42 @@ def _single_fix_bounds(ts):
     beginning or end with the neccessary energy content to shift the time
     series smoothly down in the neccessary regions.
 
+    The overlay may be applied multiple times from the first peak to the
+    last peak, until all are removed.
+
     Several options were tried to achieve this and were compared empirically.
     Empirically the best results were delivered by an overlay with a
     quarter sine function, other options tried where constant, exponential,
     linear, flipping, loop_checking."""
-    ts = _add_quarter_sine(ts)
-    flipped = _add_quarter_sine(ts[::-1])
-    return util.norm_maxabs(flipped[::-1])
+    ts = np.array(ts)
+    while not _bounds_valid(ts):
+        ts = _add_quarter_sine(ts)
+        flipped = _add_quarter_sine(ts[::-1])
+        ts = flipped[::-1]
+    return util.norm_maxabs(ts)
+
+
+def _bounds_valid(ts):
+    """Checks that the initial and end boundary condition of a time series
+    `ts` are valid, i.e. energy of `ts` never exceeds 0.
+    Returns True or False"""
+    if np.all(ts <= 0):
+        return True
+    return _forward_valid(ts) and _backward_valid(ts)
+
+
+def _forward_valid(ts):
+    """Checks that the initial boundary condition of a time series
+    `ts` is valid, i.e. energy of `ts` never exceeds 0.
+    Returns True or False"""
+    return True if np.all(np.cumsum(ts) <= 0) else False
+
+
+def _backward_valid(ts):
+    """Checks that the end boundary condition of a time series
+    `ts` is valid, i.e. energy of flipped `ts` never exceeds 0.
+    Returns True or False"""
+    return _forward_valid(ts[::-1])
 
 
 def _add_quarter_sine(ts, safety=1.001):
@@ -861,20 +894,21 @@ def _add_quarter_sine(ts, safety=1.001):
     series will have an integral that never exceeds zero."""
 
     # check if time series needs to be fixed, else return prematurely
-    if np.all(ts <= 0):
-        return ts
-    if np.all((energy := np.cumsum(ts)) <= 0):
+    if _forward_valid(ts):
         return ts
 
-    e_max = np.max(energy)
-    ind_max = int(np.argmax(energy))
+    # find maximum peak
+    energy = np.cumsum(ts)
+    ind_max = np.argmax(energy)
+    e_max = energy[ind_max]
 
+    # construct quarter sine
     qsin_ind = np.linspace(0, np.pi / 2, ind_max + 1)
     qsin = np.cos(qsin_ind)
     qsin_e = np.sum(qsin)
     qsin *= e_max / qsin_e
 
+    # superpose
     qsin_tail = np.zeros(len(ts) - ind_max - 1)
     qsin = np.concatenate([qsin, qsin_tail])
-
     return ts - safety * qsin
