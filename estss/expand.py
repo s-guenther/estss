@@ -62,7 +62,7 @@ def compute_expanded_ts():
     pass
 
 
-def recombine(df_ts='data/init_ts.pkl', nout_concat=2**13, nout_spos=2**15,
+def recombine(df_ts='data/init_ts.pkl', nout_concat=2 ** 13, nout_spos=2 ** 15,
               kwargs_concat=None, kwargs_spos=None):
     """Takes a time series dataframe and recombines the timeseries via
     concatenation and superposition.
@@ -184,7 +184,7 @@ def modify(df_ts='data/recombined_ts.pkl', nout_per_nin=8, kwargs_mod=None):
     return df_spc, spc_strings
 
 
-def fix_constraints(df_ts='data/expanded_ts.pkl', kind='only_negative'):
+def fix_constraints(df_ts, kind='only_negative'):
     """Takes a time series dataframe `df_ts` and fixes the constraints that
     may be violated.
 
@@ -197,12 +197,12 @@ def fix_constraints(df_ts='data/expanded_ts.pkl', kind='only_negative'):
 
     Parameters
     ----------
-    df_ts : pandas.DataFrame or str, default: 'data/init_ts.pkl'
+    df_ts : pandas.DataFrame or str
         mxn Dataframe, where n = number of time series, m = number of points
         in time. If string is passed, a valid path to a dataframe object is
         expected and loaded
     kind : str, default: 'only negative'
-        must be in ['only_negative', 'only_plusminus']
+        must be in ['only_negative', 'only_posneg']
         Depending on the chosen value, it will transform all all time series
         in a way that they are strictly negative valued or in a way that
         they strictly have both negative and positive values
@@ -211,13 +211,10 @@ def fix_constraints(df_ts='data/expanded_ts.pkl', kind='only_negative'):
     -------
     df_ts : pandas.DataFrame
         With the same size as the input data frame"""
-    if kind not in (options := ['only_negative', 'only_plusminus']):
+
+    if kind not in (options := ['only_negative', 'only_posneg']):
         raise ValueError(f'kind must be in {options}, found kind = {kind}')
 
-    if df_ts is None:
-        print('No df passed, calculating with modify() first...')
-        df_ts = modify(df_ts=None)
-        print('...finished')
     df_ts = util.read_df_if_string(df_ts)
 
     df_ts = _fix_mean(df_ts)
@@ -226,8 +223,56 @@ def fix_constraints(df_ts='data/expanded_ts.pkl', kind='only_negative'):
     return df_ts
 
 
-def verify():
-    pass
+def verify(df_ts, kind='only_negative'):
+    """Takes a time series dataframe `df_ts` and verifies that all
+    constraints of all time series are fulfilled. Removes time series that
+    do not satisfy the constraints.
+
+    The function checks that all time series satisfy:
+    - mean is negative
+    - maxabs is 1
+    - are strictly negative (`kind='only_negative'`)
+      or strictly positive/negative (`kind='only_posneg'`)
+    - init/end boundaray condition is fulfilled (energy never exceeds zero)
+
+    Although the subroutines of fix_constraints() ensure all this,
+    they might damage a constraint by fixing another one (_fix_bounds()
+    might damage _fix_sign()).
+
+    Parameters
+    ----------
+    df_ts : pandas.DataFrame or str, default: 'data/init_ts.pkl'
+        mxn Dataframe, where n = number of time series, m = number of points
+        in time. If string is passed, a valid path to a dataframe object is
+        expected and loaded
+    kind : str, default: 'only negative'
+        must be in ['only_negative', 'only_posneg']
+        Depending on the chosen value, it will transform all all time series
+        in a way that they are strictly negative valued or in a way that
+        they strictly have both negative and positive values
+
+    Returns
+    -------
+    df_ts : pandas.DataFrame"""
+    if kind not in (options := ['only_negative', 'only_posneg']):
+        raise ValueError(f'kind must be in {options}, found kind = {kind}')
+
+    df_ts = util.read_df_if_string(df_ts)
+
+    df_mean = df_ts.apply(lambda ts: np.mean(ts) < 0)
+    df_maxabs = df_ts.apply(lambda ts: np.max(np.abs(ts)) == 1)
+
+    if kind == 'only_negative':
+        df_strict = df_ts.apply(lambda ts: np.all(ts <= 0))
+    elif kind == 'only_posneg':
+        df_strict = df_ts.apply(lambda ts: ~np.all(ts <= 0))
+    else:
+        raise RuntimeError('If-...-else reached presumably impossible path')
+
+    df_binit = df_ts.apply(lambda ts: np.max(np.cumsum(ts)) <= 0)
+    df_bend = df_ts.apply(lambda ts: np.max(np.cumsum(ts[::-1])) <= 0)
+
+    return df_mean, df_maxabs, df_strict, df_binit, df_bend
 
 
 # ##
@@ -240,7 +285,7 @@ def verify():
 # ##
 
 def _concat_strings(
-        nout=2**13-2**11, nin=2**11, n_ts=(2, 4), ts_len=1000,
+        nout=2 ** 13 - 2 ** 11, nin=2 ** 11, n_ts=(2, 4), ts_len=1000,
         inlenrange=(0.2, 0.5), outlenrange=(0.2, 0.5), seed=2):
     """Creates a `nout`-element list of randomly generated strings that
     define how a `nin`-element set of input time series shall be
@@ -327,7 +372,7 @@ def _append_ts_with_overlap(ts_list, overlap=9, samples=1000):
     for i_ts, ts in enumerate(ts_list):
         if i_ts == 0:
             ts = _smooth_ends(ts, overlap, 'end')
-        elif i_ts == n_ts-1:
+        elif i_ts == n_ts - 1:
             ts = _smooth_ends(ts, overlap, 'start')
         else:
             ts = _smooth_ends(ts, overlap, 'both')
@@ -341,18 +386,19 @@ def _append_ts_with_overlap(ts_list, overlap=9, samples=1000):
 def _smooth_ends(ts, overlap, whichend='both'):
     """Implements the overlap logic of _append_ts_with_overlap()."""
     len_ts = len(ts)
-    multstart = np.hstack([np.linspace(1/(overlap+1), 1-1/(overlap+1),
-                                       overlap),
-                           np.ones((len_ts - overlap,))])
+    multstart = np.hstack(
+        [np.linspace(1 / (overlap + 1), 1 - 1 / (overlap + 1), overlap),
+         np.ones((len_ts - overlap,))])
     multend = np.hstack([np.ones((len_ts - overlap,)),
-                         np.linspace(1-1/(overlap+1), 1/(overlap+1), overlap)])
-    multboth = multstart*multend
+                         np.linspace(1 - 1 / (overlap + 1), 1 / (overlap + 1),
+                                     overlap)])
+    multboth = multstart * multend
     if whichend == 'start':
-        return ts*multstart
+        return ts * multstart
     elif whichend == 'end':
-        return ts*multend
+        return ts * multend
     elif whichend == 'both':
-        return ts*multboth
+        return ts * multboth
 
 
 def _append_two_ts_with_overlap(ts1, ts2, overlap):
@@ -369,7 +415,7 @@ def _append_two_ts_with_overlap(ts1, ts2, overlap):
 # ## Superposition
 # ##
 
-def _superpos_strings(nout=2**15-2**13, nin=2**13, n_ts=(2, 4),
+def _superpos_strings(nout=2 ** 15 - 2 ** 13, nin=2 ** 13, n_ts=(2, 4),
                       scalerange=(0.2, 1.0), seed=3):
     """Creates a `nout`-element list of randomly generated strings that
     define how a `nin`-element set of input time series shall be
@@ -390,7 +436,8 @@ def _superpos_strings(nout=2**15-2**13, nin=2**13, n_ts=(2, 4),
     for _ in range(nout):
         nts = random.randint(*n_ts)
         ts_ids = [random.randrange(nin) for _ in range(nts)]
-        scales = [int(random.uniform(*scalerange)*10)/10 for _ in range(nts)]
+        scales = [int(random.uniform(*scalerange) * 10) / 10 for _ in
+                  range(nts)]
         astr = ', '.join(map(str, ts_ids)) + ' | ' + \
                ', '.join(map(str, scales))
         add_strings.append(astr)
@@ -471,7 +518,7 @@ def _curtail_down(ts, cutoff=0.2):
     ts : time series array with the relevant data
     cutoff : float, a value between 0 and 1
         0: nothing changes, 1:everything would be cutoff"""
-    cutoff_value = cutoff*(np.max(ts) - np.min(ts)) + np.min(ts)
+    cutoff_value = cutoff * (np.max(ts) - np.min(ts)) + np.min(ts)
     ts = copy(ts)
     ts[ts < cutoff_value] = cutoff_value
     return util.norm_maxabs(ts)
@@ -491,11 +538,11 @@ def _curtail_within(ts, cutoff=0.2):
                     np.min(ts))
     cutoff_upper = (0.5 * (1 + cutoff) * (np.max(ts) - np.min(ts)) +
                     np.min(ts))
-    cutoff_mid = (cutoff_upper + cutoff_lower)/2
+    cutoff_mid = (cutoff_upper + cutoff_lower) / 2
     ts_upper = ts * (ts > cutoff_upper)
-    ts_upper = (ts_upper - cutoff_upper)*(ts_upper > 0)
+    ts_upper = (ts_upper - cutoff_upper) * (ts_upper > 0)
     ts_lower = ts * (ts < cutoff_lower)
-    ts_lower = (ts_lower - cutoff_lower)*(ts_lower < 0)
+    ts_lower = (ts_lower - cutoff_lower) * (ts_lower < 0)
     ts_merge = ts_upper + ts_lower + cutoff_mid
     return util.norm_maxabs(ts_merge)
 
@@ -517,7 +564,7 @@ def _gen_random_dist_supports(seed):
     np.random.seed(seed)
     nsupport = np.random.randint(4, 8)
     maxdeviation = 0.5
-    randdev = (np.random.rand(nsupport)*2 - 1)*maxdeviation
+    randdev = (np.random.rand(nsupport) * 2 - 1) * maxdeviation
     supports = np.cumsum(randdev + 1)
     supports -= supports[0]
     supports /= np.max(supports)
@@ -601,7 +648,7 @@ _MODKEYDEF['inv'] = (_invert, (-1, -1), 0.5)
 # ## Signal Processing Chain generation and execution
 # ##
 
-def _sig_proc_chain_strings(nout_per_nin=8, nin=2**15, includeorig=True,
+def _sig_proc_chain_strings(nout_per_nin=8, nin=2 ** 15, includeorig=True,
                             modkeydef=None, seed=10):
     """Creates a `nout_per_nin`*`n_in`-element list of randomly generated
     strings that define how a `nin`-element set of input time series shall be
@@ -725,12 +772,12 @@ def _single_fix_mean(ts, tol=0.01, rand_move_range=0.1):
     by `tol`: If the mean is between -`tol` and +`tol`, the time series will be
     shifted (and then normalized) to have a mean value between -`tol` and
     `rand_move_range`"""
-    if (mts := np.mean(ts)) <= -tol:
+    if (mean_ts := np.mean(ts)) <= -tol:
         return ts
-    elif mts >= tol:
+    elif mean_ts >= tol:
         return -ts
-    elif -tol < mts < tol:
-        ts = util.norm_maxabs(ts - 2*tol - uniform(tol, rand_move_range))
+    elif -tol < mean_ts < tol:
+        ts = util.norm_maxabs(ts - 2 * tol - uniform(tol, rand_move_range))
         if -tol < np.mean(ts) < tol:
             ts = _single_fix_mean(ts)
         return ts
@@ -744,15 +791,15 @@ def _single_fix_mean(ts, tol=0.01, rand_move_range=0.1):
 
 def _fix_sign(df_ts, kind='only_negative'):
     """Applies _single_fix_sign_to_only_negative() if `kind` = 'only_negative'
-    and _single_fix_sign_to_only_plusmins() if `kind` = 'only_plusminus' to
+    and _single_fix_sign_to_only_posneg() if `kind` = 'only_posneg' to
     the whole time series dataframe `df_ts`"""
-    if kind not in (options := ['only_negative', 'only_plusminus']):
+    if kind not in (options := ['only_negative', 'only_posneg']):
         raise ValueError(f'kind must be in {options}, found kind = {kind}')
 
     if kind == 'only_negative':
         return df_ts.apply(_single_fix_sign_to_only_negative)
-    elif kind == 'only_plusminus':
-        return df_ts.apply(_single_fix_sign_to_only_plusminus)
+    elif kind == 'only_posneg':
+        return df_ts.apply(_single_fix_sign_to_only_posneg)
     else:
         raise RuntimeError('If-...-else reached presumably impossible path')
 
@@ -766,7 +813,7 @@ def _single_fix_sign_to_only_negative(ts):
         return util.norm_maxabs(ts - max_ts)
 
 
-def _single_fix_sign_to_only_plusminus(ts):
+def _single_fix_sign_to_only_posneg(ts):
     """If the time series `ts` does only have negative parts, it is shifted
     in a way that it has both positive and negative parts. The shift
     performed is randomly selected between max(ts) and mean(ts). The result is
@@ -788,7 +835,6 @@ def _fix_bounds(df_ts):
     return df_ts.apply(_single_fix_bounds)
 
 
-# TODO refactor logic, especially the next() method in _single_find_index_max
 def _single_fix_bounds(ts):
     """ Fixes the initial and end boundary condition of a time series `ts`. The
     boundary condition is that the time series shall have its maximum energy
@@ -801,56 +847,34 @@ def _single_fix_bounds(ts):
     Empirically the best results were delivered by an overlay with a
     quarter sine function, other options tried where constant, exponential,
     linear, flipping, loop_checking."""
-    while _single_find_index_max(ts) != -1:
-        ts = _single_fix_bound_start(ts)
-    ts = ts[::-1]
-    while _single_find_index_max(ts) != -1:
-        ts = _single_fix_bound_start(ts)
-    return util.norm_maxabs(ts[::-1])
+    ts = _add_quarter_sine(ts)
+    flipped = _add_quarter_sine(ts[::-1])
+    return util.norm_maxabs(flipped[::-1])
 
 
-def _single_fix_bound_start(ts):
-    """will change the ts so that the integral will be minimal at the
-    beginning."""
-    index_max = _single_find_index_max(ts)
-    if np.size(index_max) > 0:
-        if np.size(index_max) > 1:
-            index_max = index_max[0]
-        if index_max != -1:
-            ts_fixed = _sin_overlay_start(ts, index_max)
-            return ts_fixed
-    else:
+def _add_quarter_sine(ts, safety=1.001):
+    """Adds a quarter cosine wave at the beginning of a time series `ts`.
+    Looks for the maximum energy and position within `ts` constructs a
+    quarter cosine wave with this energy amount from the beginning to this
+    position and superposes both. The quarter cosine wave is multiplied with
+    `safety` to circumvent numerical rounding errors. The resuling time
+    series will have an integral that never exceeds zero."""
+
+    # check if time series needs to be fixed, else return prematurely
+    if np.all(ts <= 0):
+        return ts
+    if np.all((energy := np.cumsum(ts)) <= 0):
         return ts
 
+    e_max = np.max(energy)
+    ind_max = int(np.argmax(energy))
 
-def _single_find_index_max(ts):
-    """will find the index of the maximum energy content of the storage
-    of the first timespan where the storage would be overcharged"""
-    energy = np.cumsum(ts)
-    index_energy_positive = np.argwhere([energy > 0])
-    if len(index_energy_positive) == 0:
-        index_max = -1
-    else:
-        diff_index_energy = np.diff(index_energy_positive[:, 1])
-        index_max_interval = \
-            next((i for i, x in enumerate(diff_index_energy[0:]) if x != 1),
-                 None)
-        if index_max_interval is None:
-            index_max_interval = len(index_energy_positive) - 1
-        index_max = \
-            np.argmax(energy[0:index_energy_positive[index_max_interval][1]+1])
-    return index_max
+    qsin_ind = np.linspace(0, np.pi / 2, ind_max + 1)
+    qsin = np.cos(qsin_ind)
+    qsin_e = np.sum(qsin)
+    qsin *= e_max / qsin_e
 
+    qsin_tail = np.zeros(len(ts) - ind_max - 1)
+    qsin = np.concatenate([qsin, qsin_tail])
 
-def _sin_overlay_start(ts, index_max, safety=1 + 1e-5):
-    """This functions adds a sine function as an overlay to the time series.
-    The maximum of the sine function is at the start of the time series. The
-    safety ensures that a rounding error would not result in mathematical
-    problems."""
-    diff_energy_max = np.cumsum(ts)[index_max]
-    vec_sin = np.cos(np.arange(index_max+1) * np.pi/2/(index_max+1))
-    sum_sin = np.sum(vec_sin)
-    factor_sin = np.abs(diff_energy_max/sum_sin)*safety
-    ts[0:index_max + 1] = ts[0:index_max + 1] - vec_sin * factor_sin
-    ts = ts / np.max(np.abs(ts))
-    return ts
+    return ts - safety * qsin
