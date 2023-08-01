@@ -13,10 +13,7 @@ This includes:
 Relevant methods in this module:
     get_expanded_ts()
     gen_expanded_ts()
-    expand()
-    recombine()
-    modify()
-    fix_constraints()"""
+"""
 
 # The module is structured as follows
 # - get_expanded_ts()
@@ -54,12 +51,163 @@ from estss import util
 # ##
 # ## ##########################################################################
 
-def get_expanded_ts():
-    pass
+def get_expanded_ts(df_files=('data/exp_ts_only_neg.pkl',
+                              'data/exp_ts_only_posneg.pkl')):
+    """Load expanded time series data saved as pickled pandas dataframes.
+
+    Loads 2 dataframes, returns as tuple. The first contains only time
+    series that are strictly negative valued, the second contains time
+    series that are strictly both positive and negative valued.
+
+    Further constraints that the time series satisfy:
+    - mean is negative
+    - maxabs is 1
+    - init/end boundary condition is fulfilled (energy never exceeds zero)
+    (see verfiy_constraints() for more info)
+
+    The dataframe is an nxm array with m being the number of time series and n
+    the number of datapoints of the time series.
+
+    The data/ folder contains text files encoding how each time series
+    within the dataframes is created
+
+    Parameters
+    ----------
+    df_files : tuple of str, default: ('data/exp_ts_only_{neg,posneg}.pkl')
+        2-tuple with file paths to the dataframes to load
+
+    Returns
+    -------
+    df_ts_only_neg : pandas.DataFrame
+    df_ts_only_posneg : pandas.DataFrame
+    """
+    return pd.read_pickle(df_files[0]), pd.read_pickle(df_files[1])
 
 
-def compute_expanded_ts():
-    pass
+def compute_expanded_ts(df_init='data/init_ts.pkl', seed=42):
+    """Computes expanded time series dataframes from an initial time
+    series dataframe.
+
+    It invokes expand() two times. Once with parameter `kind='only_neg'`,
+    once with `kind=only_posnet`. See expand() for more information. The
+    generated data is automatically saved to disk by expand().
+
+    Returns a 3-tuple, the first 2 elements are the dataframes, the third is
+    a dict with information on how these were created.
+
+    Parameters
+    ----------
+    df_init : pandas.DataFrame or str, default: 'data/init_ts.pkl'
+        mxn Dataframe, where n = number of time series, m = number of points
+        in time. If string is passed, a valid path to a dataframe object is
+        expected and loaded
+    seed : int, default: 42
+        The random generator is initialized with this seed, ensures
+        reproducability
+
+    Returns
+    -------
+    df_exp_neg : pandas.DataFrame
+        Size of this dataframe depends on the standard parameters of the
+        invoked subfunctions and should be nxm with n being the number of
+        timesteps (1000) and m being the number of time series (2**18 = 262144)
+        This dataframe contains only time series that are strictly negative.
+    df_exp_posneg : pandas.DataFrame
+        Size of this dataframe depends on the standard parameters of the
+        invoked subfunctions and should be nxm with n being the number of
+        timesteps (1000) and m being the number of time series (2**18 = 262144)
+        This dataframe contains only time series that are strictly both
+        positive and negative.
+    str_combined : dict of lists of str
+        Contains info on how the initial time series dataset was recombined
+        with concatenation and superposition and modification.
+        Dict keys are
+        recombined_neg, recombined_posneg, modified_neg, modified_posneg
+    """
+    print('\n#\n# Compute Expanded Time Series - only negative\n#')
+    df_exp_neg, str_rec_neg, str_mod_neg = \
+        expand(df_init, kind='only_neg', seed=seed)
+
+    print('\n#\n# Compute Expanded Time Series - only positive/negative\n#')
+    df_exp_posneg, str_rec_posneg, str_mod_posneg = \
+        expand(df_init, kind='only_posneg', seed=seed+10)
+
+    str_combined = dict(recombined_neg=str_rec_neg,
+                        recombined_posneg=str_mod_posneg,
+                        modified_neg=str_mod_neg,
+                        modified_posneg=str_mod_posneg)
+    return df_exp_neg, df_exp_posneg, str_combined
+
+
+def expand(df_init='data/init_ts.pkl', kind='only_neg', seed=42,
+           save_to_disk='data/exp_ts'):
+    """Computes an expanded time series data frame from an initial time
+    series dataframe.
+
+    It serially performs the following operations:
+    - Recombination (randomly created concatenations and superpositions)
+    - Modifications (modified by randomly created signal processing chains)
+    - Fix Constraints (ensures mean=0, maxabs=1, integral never exceeds 0,
+      ts values only negative/ts values only both pos/neg)
+
+    See recombine(), modify(), fix_constraints() and verify_constraints()
+    for more info.
+
+    Parameters
+    ----------
+    df_init : pandas.DataFrame or str, default: 'data/init_ts.pkl'
+        mxn Dataframe, where n = number of time series, m = number of points
+        in time. If string is passed, a valid path to a dataframe object is
+        expected and loaded
+    kind : str, default: 'only_neg'
+        must be in ['only_neg', 'only_posneg']
+        Depending on the chosen value, it will transform all all time series
+        in a way that they are strictly negative valued or in a way that
+        they strictly have both negative and positive values
+    seed : int, default: 42
+        The random generator is initialized with this seed, ensures
+        reproducability
+    save_to_disk : str, default: 'data/exp_ts'
+        saves the dataframe as well as text files that encode how the data
+        frame is created to the disk with this leading identifier
+
+    Returns
+    -------
+    df_exp : pandas.DataFrame
+        Size of this dataframe depends on the standard parameters of the
+        invoked subfunctions and should be nxm with n being the number of
+        timesteps (1000) and m being the number of time series (2**18 = 262144)
+    str_rec : list of str
+        Contains info on how the initial time series dataset was recombined
+        with concatenation and superposition
+    str_mod : list of str
+        Contains info on how the recombined time series dataset was modified
+        by signal processing chains
+    """
+    print('Recombine ... ')
+    df_exp, str_rec = recombine(df_init,
+                                kwargs_concat=dict(seed=seed),
+                                kwargs_spos=dict(seed=seed+1))
+
+    print(' ... finished\nModify ...')
+    df_exp, str_mod = modify(df_exp, kwargs_mod=dict(seed=seed+2))
+
+    print(' ... finished\nFix Constraints ...')
+    df_exp = fix_constraints(df_exp, kind=kind)
+
+    print(' ... finished\nVerify Constraints ...')
+    df_exp = verify_constraints(df_exp, kind=kind)
+
+    print(' ... finished\nSave to Disk ...')
+    if save_to_disk is not None:
+        df_exp.to_pickle(f'{save_to_disk}_{kind}.pkl')
+        with open(f'{save_to_disk}_recombined_strings_{kind}', 'w') as f:
+            f.writelines([f'{line}\n' for line in str_rec])
+        with open(f'{save_to_disk}_modified_strings_{kind}', 'w') as f:
+            f.writelines([f'{line}\n' for line in str_mod])
+    print(' ... finished')
+
+    return df_exp, str_rec, str_mod
 
 
 def recombine(df_ts='data/init_ts.pkl', nout_concat=2 ** 13, nout_spos=2 ** 15,
@@ -169,7 +317,8 @@ def modify(df_ts='data/recombined_ts.pkl', nout_per_nin=8, kwargs_mod=None):
     spc_strings : list of str
         `n` - element list with n being the number of time series in
         `df_spc`, where each element encodes how the according time
-        series is generated by the signal processing chain."""
+        series is generated by the signal processing chain.
+    """
     if df_ts is None:
         print('No df passed, calculating with recombine() first...')
         df_ts = recombine()[0]
@@ -184,7 +333,7 @@ def modify(df_ts='data/recombined_ts.pkl', nout_per_nin=8, kwargs_mod=None):
     return df_spc, spc_strings
 
 
-def fix_constraints(df_ts, kind='only_negative'):
+def fix_constraints(df_ts, kind='only_neg'):
     """Takes a time series dataframe `df_ts` and fixes the constraints that
     may be violated.
 
@@ -201,8 +350,8 @@ def fix_constraints(df_ts, kind='only_negative'):
         mxn Dataframe, where n = number of time series, m = number of points
         in time. If string is passed, a valid path to a dataframe object is
         expected and loaded
-    kind : str, default: 'only negative'
-        must be in ['only_negative', 'only_posneg']
+    kind : str, default: 'only_neg'
+        must be in ['only_neg', 'only_posneg']
         Depending on the chosen value, it will transform all all time series
         in a way that they are strictly negative valued or in a way that
         they strictly have both negative and positive values
@@ -210,9 +359,9 @@ def fix_constraints(df_ts, kind='only_negative'):
     Returns
     -------
     df_ts : pandas.DataFrame
-        With the same size as the input data frame"""
-
-    if kind not in (options := ['only_negative', 'only_posneg']):
+        With the same size as the input data frame
+    """
+    if kind not in (options := ['only_neg', 'only_posneg']):
         raise ValueError(f'kind must be in {options}, found kind = {kind}')
 
     df_ts = util.read_df_if_string(df_ts)
@@ -223,7 +372,7 @@ def fix_constraints(df_ts, kind='only_negative'):
     return df_ts
 
 
-def verify_constraints(df_ts, kind='only_negative'):
+def verify_constraints(df_ts, kind='only_neg'):
     """Takes a time series dataframe `df_ts` and verifies that all
     constraints of all time series are fulfilled. Removes time series that
     do not satisfy the constraints.
@@ -231,7 +380,7 @@ def verify_constraints(df_ts, kind='only_negative'):
     The function checks that all time series satisfy:
     - mean is negative
     - maxabs is 1
-    - are strictly negative (`kind='only_negative'`)
+    - are strictly negative (`kind='only_neg'`)
       or strictly positive/negative (`kind='only_posneg'`)
     - init/end boundary condition is fulfilled (energy never exceeds zero)
 
@@ -245,16 +394,17 @@ def verify_constraints(df_ts, kind='only_negative'):
         mxn Dataframe, where n = number of time series, m = number of points
         in time. If string is passed, a valid path to a dataframe object is
         expected and loaded
-    kind : str, default: 'only negative'
-        must be in ['only_negative', 'only_posneg']
+    kind : str, default: 'only_neg'
+        must be in ['only_neg', 'only_posneg']
         Depending on the chosen value, it will transform all all time series
         in a way that they are strictly negative valued or in a way that
         they strictly have both negative and positive values
 
     Returns
     -------
-    df_ts : pandas.DataFrame"""
-    if kind not in (options := ['only_negative', 'only_posneg']):
+    df_ts : pandas.DataFrame
+    """
+    if kind not in (options := ['only_neg', 'only_posneg']):
         raise ValueError(f'kind must be in {options}, found kind = {kind}')
 
     df_ts = util.read_df_if_string(df_ts)
@@ -263,7 +413,7 @@ def verify_constraints(df_ts, kind='only_negative'):
     df_mean = df_ts.apply(lambda ts: np.mean(ts) < 0)
     df_maxabs = df_ts.apply(lambda ts: np.max(np.abs(ts)) == 1)
 
-    if kind == 'only_negative':
+    if kind == 'only_neg':
         df_strict = df_ts.apply(lambda ts: np.all(ts <= 0))
     elif kind == 'only_posneg':
         df_strict = df_ts.apply(lambda ts: ~np.all(ts <= 0))
@@ -793,22 +943,22 @@ def _single_fix_mean(ts, tol=0.01, rand_move_range=0.1):
 # ## Fix Sign
 # ##
 
-def _fix_sign(df_ts, kind='only_negative'):
-    """Applies _single_fix_sign_to_only_negative() if `kind` = 'only_negative'
+def _fix_sign(df_ts, kind='only_neg'):
+    """Applies _single_fix_sign_to_only_neg() if `kind` = 'only_neg'
     and _single_fix_sign_to_only_posneg() if `kind` = 'only_posneg' to
     the whole time series dataframe `df_ts`"""
-    if kind not in (options := ['only_negative', 'only_posneg']):
+    if kind not in (options := ['only_neg', 'only_posneg']):
         raise ValueError(f'kind must be in {options}, found kind = {kind}')
 
-    if kind == 'only_negative':
-        return df_ts.apply(_single_fix_sign_to_only_negative)
+    if kind == 'only_neg':
+        return df_ts.apply(_single_fix_sign_to_only_neg)
     elif kind == 'only_posneg':
         return df_ts.apply(_single_fix_sign_to_only_posneg)
     else:
         raise RuntimeError('If-...-else reached presumably impossible path')
 
 
-def _single_fix_sign_to_only_negative(ts):
+def _single_fix_sign_to_only_neg(ts):
     """If the time series `ts` does have positive parts, it is shifted and
     normalized afterwards so that the maximum positive value becomes zero"""
     if (max_ts := np.max(ts)) <= 0:
