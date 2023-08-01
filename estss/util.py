@@ -43,13 +43,19 @@ def norm_meanmaxabs(ts):
     raise ZeroDivisionError"""
     tsmod = ts - np.mean(ts)
     maxval = np.max(np.abs(tsmod))
-    return tsmod/maxval
+    normed = tsmod/maxval
+    if np.any(np.isnan(normed)):
+        raise ZeroDivisionError
+    return normed
 
 
 def norm_maxabs(ts):
     """Returns a time series `ts` normalized to maxabs = 1 (but arbitrary
     mean). May raise ZeroDivisionError"""
-    return ts/np.max(np.abs(ts))
+    normed = ts/np.max(np.abs(ts))
+    if np.any(np.isnan(normed)):
+        raise ZeroDivisionError
+    return normed
 
 
 # ##
