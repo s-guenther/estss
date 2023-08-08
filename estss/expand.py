@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Gathers all functionality to expand or manifold an initial time series set.
+"""Expand or manifold an initial time series set.
 This includes:
 - recombination:
   (a) concatenation (b) superposition

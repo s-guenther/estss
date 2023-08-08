@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Module that gathers various non-specific methods and utility functions that
+"""Various non-specific methods and utility functions that
 are not associated to a specific sub-module or are used by multiple ones"""
 
 from matplotlib import pyplot as plt

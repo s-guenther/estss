@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""Module that generates the initial data from raw data. Saves and loads
+"""Generate or load the initial data from raw data. Saves and loads
 from disk. This data is the starting point for Superposition + Concatenation
-and the Expansion Step.
+and modification in the Expansion Step.
 Relevant method are
     get_init_ts()       to load data
-    ees_ts()            to generate from ifes-ees raw data"""
+    _ees_ts()            to generate from ifes-ees raw data"""
 
 import random
 import warnings
