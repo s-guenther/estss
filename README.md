@@ -14,12 +14,36 @@ _tbd_
 
 ## Requirements
 
-_tbd_
+Python 3.8. More details in [Installation](#installation)
 
 
 ## Installation
 
-_tbd_
+There is no setup script, `pip` or `conda` package prepared. Part of the reason is
+that the toolbox is still in pre-alpha stage (I didn't even dare to provide a
+version number 0.1), part is missing knowledge about how to deploy it properly and
+another part is that the some packages used for this one are in conflict.
+The packages that are in conflict are:
+
+    kats, tsfresh, tsfel, pycatch24
+
+The main issue seems to be a broken or too restrictive dependency tree of `kats`
+(as of Aug 23, for a start, see
+https://github.com/facebookresearch/Kats/issues/308), making it hard to install
+on it's own and harder to get to work with the other ones. I didn't manage to
+create a setup without dependency conflicts, however, the following installation
+procedure seems to work without errors in use:
+
+    mamba create python=3.8 -n estss
+    mamba activate estss
+    mamba install numpy pandas convertdate lunarcalendar holidays=0.23 tqdm pystan=2.19.1.1 fbprophet=0.7.1 packaging=21.3 kats=0.2.0 pycatch22 tsfresh ipython -c conda-forge
+    pip install tsfel
+
+So, clone the repository, add it to the Python Path, e.g. add to `.bashrc`
+
+    export PYTHONPATH=$PYTHONPATH:$HOME/estss
+
+setup the `venv` with `mamba` as described above and you should be good to go.
 
 
 ## Getting Started
