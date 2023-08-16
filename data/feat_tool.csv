@@ -37,87 +37,80 @@
 36;14;kats;bocp_conf_mean;bocp_conf_mean;TRUE;_dont_care;;;changepoint detection, mean conf interval
 37;23;kats;holt_alpha;holt_alpha;TRUE;_dont_care;;;Level parameter of the Holt model (Exponential Smoothing)
 38;24;kats;holt_beta;holt_beta;TRUE;_dont_care;;;Trend parameter of the Holt model. (Expoinential Smoothing)
-39;25;kats;hw_alpha;hw_alpha;TRUE;_dont_care;;;Level parameter of the Holt Winter model
-40;26;kats;hw_beta;hw_beta;TRUE;_dont_care;;;Trend parameter of the Holt Winter model
-41;27;kats;hw_gamma;hw_gamma;TRUE;_dont_care;;;Seasonallity parameter of the Holt Winter model
-42;37;kats;outlier_num;outlier_num;TRUE;_dont_care;;;Number of outliers by the Outlier Detector. mimics the outlier detection algorithm in R
-43;38;kats;robust_num;rcp_num;TRUE;_dont_care;;;Number changepoints detected by the Robust Stat Detector.
-44;39;kats;robust_metric_mean;rcp_metric_mean;TRUE;_dont_care;;;Mean of the Metric values from the Robust Stat Detector.
-45;45;kats;firstzero_ac;acf_first_zero;TRUE;z_score;;;the time of first zero crossing the autocorrelation function.
-46;49;kats;entropy;entropy_shannon;TRUE;z_score;;;Shannon Entropy
-47;53;kats;hurst;hurst;TRUE;z_score;;;The Hurst Exponent of the time series array
-48;54;kats;std1st_der;diff1_std;TRUE;_dont_care;;;standard deviation of the first derivative of the time series.
-49;55;kats;crossing_points;cross_median;TRUE;_dont_care;;;Crossing points happen when a time series crosses the median line.
-50;56;kats;binarize_mean;binarize_mean;TRUE;_dont_care;;;Time-series values above its mean are given 1, and those below the mean are 0. Returns the average value of the binarized vector.
-51;57;kats;unitroot_kpss;unitroot_kpss;TRUE;z_score;;;test statistic based on KPSS test. Kwiatkowski–Phillips–Schmidt–Shin (KPSS) tests
-52;58;kats;heterogeneity;engles_heterogeneneity;TRUE;z_score;;;Engle's test for autogregressive Conditional Heteroscedasticity (ARCH).
-53;60;kats;linearity;linearity;TRUE;_dont_care;;;R square from a fitted linear regression.
-54;61;kats;trend_strength;stl_trend_strength;TRUE;z_score;;;STL seasonality trend decomposition using LOESS with statsmodels, trend strength
-55;62;kats;seasonality_strength;stl_seasonality_strength;TRUE;z_score;;;STL seasonality trend decomposition using LOESS with statsmodels, seasonality strength
-56;63;kats;spikiness;stl_spikiness;TRUE;z_score;;;STL seasonality trend decomposition using LOESS with statsmodels, variance of the leave-one-out variances of the remainder component
-57;64;kats;peak;stl_peak;TRUE;z_score;;;STL seasonality trend decomposition using LOESS with statsmodels, location of peak
-58;65;kats;trough;stl_trough;TRUE;z_score;;;STL seasonality trend decomposition using LOESS with statsmodels, location of trough
-59;82;kats;trend_num;mk_trend_num;TRUE;z_score;;;number of trends, MKDetector (MK stands for Mann-Kendall) is a non-parametric statistical Trend Detector
-60;83;kats;trend_num_increasing;mk_num_increasing;TRUE;z_score;;;number of increasing trends, MKDetector
-61;84;kats;trend_avg_abs_tau;mk_avg_abs_tau;TRUE;z_score;;;Mean of the abolute values of Taus of the trends detected (Kendall Tau-b statistic)
-62;4;tsfel;calc_centroid(signal, fs) ;centroid;TRUE;_dont_care;;;Computes the centroid along the time axis.
-63;5;tsfel;calc_max(signal) ;max;TRUE;norm_maxabs;;;Computes the maximum value of the signal.
-64;7;tsfel;calc_median(signal) ;median;TRUE;norm_maxabs;;;Computes median of the signal.
-65;8;tsfel;calc_min(signal) ;min;TRUE;norm_maxabs;;;Computes the minimum value of the signal.
-66;10;tsfel;calc_var(signal) ;;TRUE;norm_maxabs;;scales with std^2;Computes variance of the signal.
-67;11;tsfel;distance(signal) ;traveled_dist;TRUE;norm_maxabs;;;Computes signal traveled distance.
-68;13;tsfel;ecdf_percentile(signal[, 0.99]) ;ecdf99_norm;TRUE;norm_maxabs;;only reasonable for maxabs input;Computes the percentile values of the ECDF. at 99 percent
-69;14;tsfel;ecdf_percentile(signal[, 0.95]) ;ecdf95_norm;TRUE;norm_maxabs;;only reasonable for maxabs input;Computes the percentile values of the ECDF. at 95 percent
-70;15;tsfel;ecdf_percentile(signal[, 0.8]) ;ecdf80_norm;TRUE;norm_maxabs;;only reasonable for maxabs input;Computes the percentile values of the ECDF. at 80 percent
-71;16;tsfel;ecdf_percentile(signal[, 0.2]) ;ecdf20_norm;TRUE;norm_maxabs;;only reasonable for maxabs input;Computes the percentile values of the ECDF. at 20 percent
-72;17;tsfel;ecdf_percentile(signal[, 0.05]) ;ecdf05_norm;TRUE;norm_maxabs;;only reasonable for maxabs input;Computes the percentile values of the ECDF. at 5 percent
-73;18;tsfel;ecdf_percentile(signal[, 0.01]) ;ecdf01_norm;TRUE;norm_maxabs;;only reasonable for maxabs input;Computes the percentile values of the ECDF. at 1 percent
-74;22;tsfel;fundamental_frequency(signal, fs) ;fund_freq;TRUE;z_score;;;Computes fundamental frequency of the signal.
-75;25;tsfel;interq_range(signal) ;iqr_norm;TRUE;norm_maxabs;;only reasonable for maxabs input;Computes interquartile range of the signal.
-76;26;tsfel;kurtosis(signal) ;kurtosis;TRUE;z_score;;;Computes kurtosis of the signal.
-77;28;tsfel;max_frequency(signal, fs) ;max_freq95;TRUE;z_score;;;Computes maximum frequency of the signal. 95% of energy in fft
-78;29;tsfel;max_power_spectrum(signal, fs) ;fund_freq_val;TRUE;z_score;;;Computes maximum power spectrum density of the signal. should correnspond to fundamental frequency
-79;30;tsfel;mean_abs_deviation(signal) ;mean_diff_from_mean;TRUE;norm_maxabs;;;Computes mean absolute deviation of the signal. the mean of all deviatians from the mean, should correlate with std
-80;31;tsfel;mean_abs_diff(signal) ;mean_of_abs_diff;TRUE;norm_maxabs;;;Computes mean absolute differences of the signal. mean of discrete derivative/mean of changes, absolute value
-81;32;tsfel;mean_diff(signal) ;mean_of_signed_diff;TRUE;norm_maxabs;;;Computes mean of differences of the signal. as above, but not absolute but signed
-82;33;tsfel;median_abs_deviation(signal) ;median_diff_from_mean;TRUE;norm_maxabs;;;Computes median absolute deviation of the signal.
-83;34;tsfel;median_abs_diff(signal) ;median_of_abs_diff;TRUE;norm_maxabs;;;Computes median absolute differences of the signal.
-84;35;tsfel;median_diff(signal) ;median_of_signed_diff;TRUE;norm_maxabs;;;Computes median of differences of the signal.
-85;36;tsfel;median_frequency(signal, fs) ;freq_median;TRUE;z_score;;;Computes median frequency of the signal.
-86;40;tsfel;pk_pk_distance(signal) ;peak2peak;TRUE;norm_maxabs;;;Computes the peak to peak distance. min - max
-87;42;tsfel;power_bandwidth(signal, fs) ;power_bandwidth;TRUE;z_score;;;Computes power spectrum density bandwidth of the signal. bandwidth from 5% to 95% of power spectrum
-88;43;tsfel;rms(signal) ;rms;TRUE;norm_maxabs;;;Computes root mean square of the signal.
-89;44;tsfel;skewness(signal) ;skewness;TRUE;z_score;;;Computes skewness of the signal.
-90;45;tsfel;slope(signal) ;slope;TRUE;norm_maxabs;;;Computes the slope of the signal.
-91;46;tsfel;spectral_centroid(signal, fs) ;freq_centroid;TRUE;z_score;;;Barycenter of the spectrum.
-92;47;tsfel;spectral_decrease(signal, fs) ;freq_decrease;TRUE;z_score;;;Represents the amount of decreasing of the spectra amplitude. should be slope in freq domain
-93;48;tsfel;spectral_distance(signal, fs) ;freq_distance;TRUE;z_score;;;Computes the signal spectral distance.
-94;49;tsfel;spectral_entropy(signal, fs) ;entropy_spectral;TRUE;z_score;;;Computes the spectral entropy of the signal based on Fourier transform.
-95;50;tsfel;spectral_kurtosis(signal, fs) ;freq_kurtosis;TRUE;z_score;;;Measures the flatness of a distribution around its mean value.
-96;52;tsfel;spectral_roll_off(signal, fs) ;spectral_roll_off;TRUE;z_score;;;Computes the spectral roll-off of the signal. frequency where 95% of power in spectrum
-97;53;tsfel;spectral_roll_on(signal, fs) ;spectral_roll_on;TRUE;z_score;;;Computes the spectral roll-on of the signal. frequency where 5% of power in spectrum
-98;54;tsfel;spectral_skewness(signal, fs) ;freq_skewness;TRUE;z_score;;;Measures the asymmetry of a distribution around its mean value.
-99;56;tsfel;spectral_spread(signal, fs) ;freq_spread;TRUE;z_score;;;Measures the spread of the spectrum around its mean value.
-100;57;tsfel;spectral_variation(signal, fs) ;freq_variation;TRUE;z_score;;should correlate with spectral_spread;Computes the amount of variation of the spectrum along time.
-101;59;tsfel;total_energy(signal, fs) ;total_energy;TRUE;norm_maxabs;;redundant, scales with rms^2;Computes the total energy of the signal. rms squared
-102;65;tsfel;zero_cross(signal) ;cross_zero;TRUE;norm_maxabs;;;Computes Zero-crossing rate of the signal. number of zero crossings
-103;14;tsfresh;cid_ce(x, normalize)    ;cid;TRUE;norm_maxabs;;;This function calculator is an estimate for a time series complexity [1] (A more complex time series has more peaks, valleys etc.). complexity-invariant distance for time series
-104;16;tsfresh;count_above_mean(x)     ;perc_above_mean;TRUE;_dont_care;abs_to_rel;;Returns the number of values in x that are higher than the mean of x
-105;18;tsfresh;count_below_mean(x)     ;perc_below_mean;TRUE;_dont_care;abs_to_rel;;Returns the number of values in x that are lower than the mean of x
-106;23;tsfresh;first_location_of_maximum(x)    ;loc_of_first_max;TRUE;_dont_care;;already normalized to abs_to_rel;Returns the first location of the maximum value of x.
-107;24;tsfresh;first_location_of_minimum(x)    ;loc_of_first_min;TRUE;_dont_care;;already normalized to abs_to_rel;Returns the first location of the minimal value of x.
-108;33;tsfresh;last_location_of_maximum(x)     ;loc_of_last_max;TRUE;_dont_care;;already normalized to abs_to_rel;Returns the relative last location of the maximum value of x.
-109;34;tsfresh;last_location_of_minimum(x)     ;loc_of_last_min;TRUE;_dont_care;;already normalized to abs_to_rel;Returns the last location of the minimal value of x.
-110;39;tsfresh;longest_strike_above_mean(x)    ;longest_strike_above_mean;TRUE;_dont_care;abs_to_rel;;Returns the length of the longest consecutive subsequence in x that is bigger than the mean of x
-111;40;tsfresh;longest_strike_below_mean(x)    ;longest_strike_below_mean;TRUE;_dont_care;abs_to_rel;;Returns the length of the longest consecutive subsequence in x that is smaller than the mean of x
-112;48;tsfresh;mean_second_derivative_central(x)   ;mean_2nd_diff;TRUE;_dont_care;;;Returns the mean value of a central approximation of the second derivative
-113;64;tsfresh;sample_entropy(x)   ;entropy_sample;TRUE;_dont_care;;;Calculate and return sample entropy of x.
-114;77;tsfresh;variation_coefficient(x)    ;variation_coeff;TRUE;norm_maxabs;;;Returns the variation coefficient (standard error / mean, give relative value of variation around mean) of x.
-115;1;extra;average rectified value;arv;TRUE;norm_maxabs;;;average rectified value
-116;2;extra;crest factor;crest;TRUE;norm_maxabs;;;max/rms
-117;3;extra;shape factor;shape;TRUE;norm_maxabs;;;rms/arv
-118;4;extra;impulse factor;impulse;TRUE;norm_maxabs;;;max/arv
-119;5;extra;clearance factor;clearance;TRUE;norm_maxabs;;;max/(mean(sqrt(abs()))^2)
+39;38;kats;robust_num;rcp_num;TRUE;_dont_care;;;Number changepoints detected by the Robust Stat Detector.
+40;39;kats;robust_metric_mean;rcp_metric_mean;TRUE;_dont_care;;;Mean of the Metric values from the Robust Stat Detector.
+41;45;kats;firstzero_ac;acf_first_zero;TRUE;z_score;;;the time of first zero crossing the autocorrelation function.
+42;49;kats;entropy;entropy_shannon;TRUE;z_score;;;Shannon Entropy
+43;53;kats;hurst;hurst;TRUE;z_score;;;The Hurst Exponent of the time series array
+44;54;kats;std1st_der;diff1_std;TRUE;_dont_care;;;standard deviation of the first derivative of the time series.
+45;55;kats;crossing_points;cross_median;TRUE;_dont_care;;;Crossing points happen when a time series crosses the median line.
+46;56;kats;binarize_mean;binarize_mean;TRUE;_dont_care;;;Time-series values above its mean are given 1, and those below the mean are 0. Returns the average value of the binarized vector.
+47;57;kats;unitroot_kpss;unitroot_kpss;TRUE;z_score;;;test statistic based on KPSS test. Kwiatkowski–Phillips–Schmidt–Shin (KPSS) tests
+48;58;kats;heterogeneity;engles_heterogeneneity;TRUE;z_score;;;Engle's test for autogregressive Conditional Heteroscedasticity (ARCH).
+49;60;kats;linearity;linearity;TRUE;_dont_care;;;R square from a fitted linear regression.
+50;61;kats;trend_strength;stl_trend_strength;TRUE;z_score;;;STL seasonality trend decomposition using LOESS with statsmodels, trend strength
+51;62;kats;seasonality_strength;stl_seasonality_strength;TRUE;z_score;;;STL seasonality trend decomposition using LOESS with statsmodels, seasonality strength
+52;63;kats;spikiness;stl_spikiness;TRUE;z_score;;;STL seasonality trend decomposition using LOESS with statsmodels, variance of the leave-one-out variances of the remainder component
+53;64;kats;peak;stl_peak;TRUE;z_score;;;STL seasonality trend decomposition using LOESS with statsmodels, location of peak
+54;65;kats;trough;stl_trough;TRUE;z_score;;;STL seasonality trend decomposition using LOESS with statsmodels, location of trough
+55;4;tsfel;calc_centroid(signal, fs) ;centroid;TRUE;_dont_care;;;Computes the centroid along the time axis.
+56;5;tsfel;calc_max(signal) ;max;TRUE;norm_maxabs;;;Computes the maximum value of the signal.
+57;7;tsfel;calc_median(signal) ;median;TRUE;norm_maxabs;;;Computes median of the signal.
+58;8;tsfel;calc_min(signal) ;min;TRUE;norm_maxabs;;;Computes the minimum value of the signal.
+59;10;tsfel;calc_var(signal) ;;TRUE;norm_maxabs;;scales with std^2;Computes variance of the signal.
+60;11;tsfel;distance(signal) ;traveled_dist;TRUE;norm_maxabs;;;Computes signal traveled distance.
+61;13;tsfel;ecdf_percentile(signal[, 0.99]) ;ecdf99_norm;TRUE;norm_maxabs;;only reasonable for maxabs input;Computes the percentile values of the ECDF. at 99 percent
+62;14;tsfel;ecdf_percentile(signal[, 0.95]) ;ecdf95_norm;TRUE;norm_maxabs;;only reasonable for maxabs input;Computes the percentile values of the ECDF. at 95 percent
+63;15;tsfel;ecdf_percentile(signal[, 0.8]) ;ecdf80_norm;TRUE;norm_maxabs;;only reasonable for maxabs input;Computes the percentile values of the ECDF. at 80 percent
+64;16;tsfel;ecdf_percentile(signal[, 0.2]) ;ecdf20_norm;TRUE;norm_maxabs;;only reasonable for maxabs input;Computes the percentile values of the ECDF. at 20 percent
+65;17;tsfel;ecdf_percentile(signal[, 0.05]) ;ecdf05_norm;TRUE;norm_maxabs;;only reasonable for maxabs input;Computes the percentile values of the ECDF. at 5 percent
+66;18;tsfel;ecdf_percentile(signal[, 0.01]) ;ecdf01_norm;TRUE;norm_maxabs;;only reasonable for maxabs input;Computes the percentile values of the ECDF. at 1 percent
+67;22;tsfel;fundamental_frequency(signal, fs) ;fund_freq;TRUE;z_score;;;Computes fundamental frequency of the signal.
+68;25;tsfel;interq_range(signal) ;iqr_norm;TRUE;norm_maxabs;;only reasonable for maxabs input;Computes interquartile range of the signal.
+69;26;tsfel;kurtosis(signal) ;kurtosis;TRUE;z_score;;;Computes kurtosis of the signal.
+70;28;tsfel;max_frequency(signal, fs) ;max_freq95;TRUE;z_score;;;Computes maximum frequency of the signal. 95% of energy in fft
+71;29;tsfel;max_power_spectrum(signal, fs) ;fund_freq_val;TRUE;z_score;;;Computes maximum power spectrum density of the signal. should correnspond to fundamental frequency
+72;30;tsfel;mean_abs_deviation(signal) ;mean_diff_from_mean;TRUE;norm_maxabs;;;Computes mean absolute deviation of the signal. the mean of all deviatians from the mean, should correlate with std
+73;31;tsfel;mean_abs_diff(signal) ;mean_of_abs_diff;TRUE;norm_maxabs;;;Computes mean absolute differences of the signal. mean of discrete derivative/mean of changes, absolute value
+74;32;tsfel;mean_diff(signal) ;mean_of_signed_diff;TRUE;norm_maxabs;;;Computes mean of differences of the signal. as above, but not absolute but signed
+75;33;tsfel;median_abs_deviation(signal) ;median_diff_from_mean;TRUE;norm_maxabs;;;Computes median absolute deviation of the signal.
+76;34;tsfel;median_abs_diff(signal) ;median_of_abs_diff;TRUE;norm_maxabs;;;Computes median absolute differences of the signal.
+77;35;tsfel;median_diff(signal) ;median_of_signed_diff;TRUE;norm_maxabs;;;Computes median of differences of the signal.
+78;36;tsfel;median_frequency(signal, fs) ;freq_median;TRUE;z_score;;;Computes median frequency of the signal.
+79;40;tsfel;pk_pk_distance(signal) ;peak2peak;TRUE;norm_maxabs;;;Computes the peak to peak distance. min - max
+80;42;tsfel;power_bandwidth(signal, fs) ;power_bandwidth;TRUE;z_score;;;Computes power spectrum density bandwidth of the signal. bandwidth from 5% to 95% of power spectrum
+81;43;tsfel;rms(signal) ;rms;TRUE;norm_maxabs;;;Computes root mean square of the signal.
+82;44;tsfel;skewness(signal) ;skewness;TRUE;z_score;;;Computes skewness of the signal.
+83;45;tsfel;slope(signal) ;slope;TRUE;norm_maxabs;;;Computes the slope of the signal.
+84;46;tsfel;spectral_centroid(signal, fs) ;freq_centroid;TRUE;z_score;;;Barycenter of the spectrum.
+85;47;tsfel;spectral_decrease(signal, fs) ;freq_decrease;TRUE;z_score;;;Represents the amount of decreasing of the spectra amplitude. should be slope in freq domain
+86;48;tsfel;spectral_distance(signal, fs) ;freq_distance;TRUE;z_score;;;Computes the signal spectral distance.
+87;49;tsfel;spectral_entropy(signal, fs) ;entropy_spectral;TRUE;z_score;;;Computes the spectral entropy of the signal based on Fourier transform.
+88;50;tsfel;spectral_kurtosis(signal, fs) ;freq_kurtosis;TRUE;z_score;;;Measures the flatness of a distribution around its mean value.
+89;52;tsfel;spectral_roll_off(signal, fs) ;spectral_roll_off;TRUE;z_score;;;Computes the spectral roll-off of the signal. frequency where 95% of power in spectrum
+90;53;tsfel;spectral_roll_on(signal, fs) ;spectral_roll_on;TRUE;z_score;;;Computes the spectral roll-on of the signal. frequency where 5% of power in spectrum
+91;54;tsfel;spectral_skewness(signal, fs) ;freq_skewness;TRUE;z_score;;;Measures the asymmetry of a distribution around its mean value.
+92;56;tsfel;spectral_spread(signal, fs) ;freq_spread;TRUE;z_score;;;Measures the spread of the spectrum around its mean value.
+93;57;tsfel;spectral_variation(signal, fs) ;freq_variation;TRUE;z_score;;should correlate with spectral_spread;Computes the amount of variation of the spectrum along time.
+94;59;tsfel;total_energy(signal, fs) ;total_energy;TRUE;norm_maxabs;;redundant, scales with rms^2;Computes the total energy of the signal. rms squared
+95;65;tsfel;zero_cross(signal) ;cross_zero;TRUE;norm_maxabs;;;Computes Zero-crossing rate of the signal. number of zero crossings
+96;14;tsfresh;cid_ce(x, normalize)    ;cid;TRUE;norm_maxabs;;;This function calculator is an estimate for a time series complexity [1] (A more complex time series has more peaks, valleys etc.). complexity-invariant distance for time series
+97;16;tsfresh;count_above_mean(x)     ;perc_above_mean;TRUE;_dont_care;abs_to_rel;;Returns the number of values in x that are higher than the mean of x
+98;18;tsfresh;count_below_mean(x)     ;perc_below_mean;TRUE;_dont_care;abs_to_rel;;Returns the number of values in x that are lower than the mean of x
+99;23;tsfresh;first_location_of_maximum(x)    ;loc_of_first_max;TRUE;_dont_care;;already normalized to abs_to_rel;Returns the first location of the maximum value of x.
+100;24;tsfresh;first_location_of_minimum(x)    ;loc_of_first_min;TRUE;_dont_care;;already normalized to abs_to_rel;Returns the first location of the minimal value of x.
+101;33;tsfresh;last_location_of_maximum(x)     ;loc_of_last_max;TRUE;_dont_care;;already normalized to abs_to_rel;Returns the relative last location of the maximum value of x.
+102;34;tsfresh;last_location_of_minimum(x)     ;loc_of_last_min;TRUE;_dont_care;;already normalized to abs_to_rel;Returns the last location of the minimal value of x.
+103;39;tsfresh;longest_strike_above_mean(x)    ;longest_strike_above_mean;TRUE;_dont_care;abs_to_rel;;Returns the length of the longest consecutive subsequence in x that is bigger than the mean of x
+104;40;tsfresh;longest_strike_below_mean(x)    ;longest_strike_below_mean;TRUE;_dont_care;abs_to_rel;;Returns the length of the longest consecutive subsequence in x that is smaller than the mean of x
+105;48;tsfresh;mean_second_derivative_central(x)   ;mean_2nd_diff;TRUE;_dont_care;;;Returns the mean value of a central approximation of the second derivative
+106;64;tsfresh;sample_entropy(x)   ;entropy_sample;TRUE;_dont_care;;;Calculate and return sample entropy of x.
+107;77;tsfresh;variation_coefficient(x)    ;variation_coeff;TRUE;norm_maxabs;;;Returns the variation coefficient (standard error / mean, give relative value of variation around mean) of x.
+108;1;extra;average rectified value;arv;TRUE;norm_maxabs;;;average rectified value
+109;2;extra;crest factor;crest;TRUE;norm_maxabs;;;max/rms
+110;3;extra;shape factor;shape;TRUE;norm_maxabs;;;rms/arv
+111;4;extra;impulse factor;impulse;TRUE;norm_maxabs;;;max/arv
+112;5;extra;clearance factor;clearance;TRUE;norm_maxabs;;;max/(mean(sqrt(abs()))^2)
 0;10;kats;seas_acf1;;FALSE;;;not reasonable without period information;Autocorrelation coefficient at the first seasonal lag.
 0;11;kats;seas_pacf1;;FALSE;;;not reasonable without period information;Patial Autocorrelation coefficient at the first seasonal lag.
 0;15;kats;cusum_num;;FALSE;;;only bool output,  not exploitable;number of changepoints, cumulative sum changepoint detection
@@ -128,6 +121,10 @@
 0;20;kats;cusum_regression_detected;;FALSE;;;not applicable as main metrix is not exploitable;bool, whether regression is detected by cusum
 0;21;kats;cusum_stable_changepoint;;FALSE;;;not applicable as main metrix is not exploitable;bool, whether changepoint is stable by cusum
 0;22;kats;cusum_p_value;;FALSE;;;not applicable as main metrix is not exploitable;p value of changepoint by cusum
+0;25;kats;hw_alpha;hw_alpha;FALSE;_dont_care;;works only for positive data;Level parameter of the Holt Winter model
+0;26;kats;hw_beta;hw_beta;FALSE;_dont_care;;works only for positive data;Trend parameter of the Holt Winter model
+0;27;kats;hw_gamma;hw_gamma;FALSE;_dont_care;;works only for positive data;Seasonallity parameter of the Holt Winter model
+0;37;kats;outlier_num;outlier_num;FALSE;_dont_care;;crashes by trying to calculate;Number of outliers by the Outlier Detector. mimics the outlier detection algorithm in R
 0;28;kats;level_shift_idx;;FALSE;;;parameter needed;Location of the maximum mean value difference, between two consecutive sliding windows
 0;29;kats;level_shift_size;;FALSE;;;parameter needed;Size of the maximum mean value difference, between two consecutive sliding windows
 0;30;kats;nowcast_roc;;FALSE;;;parameter needed;Nowcasting Short term forcasting, return comparing to step n back.
@@ -165,6 +162,9 @@
 0;79;kats;time_freq_Friday;;FALSE;;;not applicable for time series without timestamps;
 0;80;kats;time_freq_Saturday;;FALSE;;;not applicable for time series without timestamps;
 0;81;kats;time_freq_Sunday;;FALSE;;;not applicable for time series without timestamps;
+0;82;kats;trend_num;mk_trend_num;FALSE;z_score;;crashes by trying to calculate;number of trends, MKDetector (MK stands for Mann-Kendall) is a non-parametric statistical Trend Detector
+0;83;kats;trend_num_increasing;mk_num_increasing;FALSE;z_score;;crashes by trying to calculate;number of increasing trends, MKDetector
+0;84;kats;trend_avg_abs_tau;mk_avg_abs_tau;FALSE;z_score;;crashes by trying to calculate;Mean of the abolute values of Taus of the trends detected (Kendall Tau-b statistic)
 0;1;tsfel;abs_energy(signal) ;;FALSE;;;not meaningful if total_energy and rms is present;Computes the absolute energy of the signal. rms not weithed by time
 0;2;tsfel;auc(signal, fs) ;;FALSE;;;paper, equals arv;Computes the area under the curve of the signal computed with trapezoid rule. negative parts are positive areas
 0;3;tsfel;autocorr(signal) ;;FALSE;;;does not make sense without lag;Computes autocorrelation of the signal.

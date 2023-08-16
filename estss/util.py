@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """Various non-specific methods and utility functions that
 are not associated to a specific sub-module or are used by multiple ones"""
-
 from matplotlib import pyplot as plt
 import numpy as np
 import pandas as pd
+import scipy.stats
 from scipy.interpolate import PchipInterpolator
 
 
@@ -56,6 +56,11 @@ def norm_maxabs(ts):
     if np.any(np.isnan(normed)):
         raise ZeroDivisionError
     return normed
+
+
+def norm_zscore(ts):
+    """Z-scores the time series `ts`, i.e. mean = 0 and std. deviation = 1."""
+    return scipy.stats.zscore(ts)
 
 
 # ##

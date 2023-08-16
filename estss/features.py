@@ -22,6 +22,7 @@ import pycatch22
 import tsfel
 import tsfresh
 
+from estss import util
 
 # ##
 # ## Module Vars, Used by Helper Functions at end of file
@@ -123,21 +124,39 @@ def single_features(ts, **kwargs):
 def _feat_from_catch22(ts):
     """Invokes `pycatch2.catch22_all()` for the time series `ts` and returns
     result as 1xf feature dataframe."""
-    # There is a lot of implicit knowledge in the following lines:
+    # There is a lot of implicit knowledge in this function:
     #   - all vars of catch24 are used
     #   - input time series already normed by norm_maxabs
     #   - all features need this norm or don't care
     feat_dict = pycatch22.catch22_all(ts, catch24=True)
-    rect_names = _rectify_names(feat_dict['names'], 'catch22')
-    return pd.DataFrame(feat_dict['values'], index=rect_names).T
+    feat_df = pd.DataFrame(feat_dict['values'], index=feat_dict['names']).T
+    _rectify_names(feat_df, 'catch22')
+    return feat_df
 
 
 # ##
 # ## Kats
 # ##
 
-def _feat_from_kats():
-    pass
+def _feat_from_kats(ts):
+    """Invokes kats feature calculation for the time series `ts` and returns
+    result as 1xf feature dataframe."""
+    # Implicit knowledge in this function:
+    #   - all used vars of kats use z-scored ts or don't care
+
+    # z-score data
+    ts = util.norm_zscore(ts)
+    # generate feature model with selected features
+    feat_names = _get_tool_info_tab('kats').orig_name
+    model = TsFeatures(selected_features=list(feat_names))
+    # transform ts into the kats format
+    df_ts = pd.DataFrame(data=dict(time=np.arange(ts.size), data=ts))
+    ts_kats = TimeSeriesData(df_ts)
+    # call feature calculation and transform output
+    feat = model.transform(ts_kats)
+    feat_df = pd.DataFrame(data=feat, index=[0])
+    _rectify_names(feat_df)
+    return feat_df
 
 
 # ##
@@ -183,10 +202,11 @@ def _get_tool_info_tab(src, use=True):
         return _DF_FEAT.query(f"src=='{src}'")
 
 
-def _rectify_names(name_list, src=None):
-    """Changes names in a `name_list` that are returned by a toolbox to the
-    rectified names defined in _DF_FEAT. If `src` is provided, use a sublist
-    of _DF_FEAT (_get_tool_info_tab() is called with this parameter)."""
+def _rectify_names(df_orig_names, src=None):
+    """Changes names of the features in the columns of `df_orig_names` that
+    are returned by a toolbox to the rectified names defined in _DF_FEAT.
+    If `src` is provided, use a sublist of _DF_FEAT (_get_tool_info_tab()
+    is called with this parameter)."""
     if src is not None:
         df_feat = _get_tool_info_tab(src)
     else:
@@ -194,7 +214,10 @@ def _rectify_names(name_list, src=None):
 
     name_pairs = {orig: rect for orig, rect
                   in zip(df_feat.orig_name, df_feat.rectified_name)}
-    return [name_pairs[name] for name in name_list]
+    old_names = df_orig_names.columns.values
+    new_names = {old: name_pairs[old] for old in old_names}
+    # inplace, no return
+    df_orig_names.rename(columns=new_names, inplace=True)
 
 
 # ##
@@ -220,3 +243,8 @@ def __minimal_test():
     feat_tsfel = tsfel.time_series_features_extractor(cfg, r_df_fel)  # noqa
 
     return feat_kats, feat_c24, feat_tsfel, feat_tsfresh
+
+
+if __name__ == '__main__':
+    KATS = _feat_from_kats([1, 2, 3, 4, 5])
+    dummybreakpoint = True
