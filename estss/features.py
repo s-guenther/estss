@@ -24,6 +24,19 @@ import tsfresh
 
 
 # ##
+# ## Module Vars, Used by Helper Functions at end of file
+# ##
+# ## ##########################################################################
+
+# Df has 10 columns:
+# ID IDtool orig_name rectified_name use norm_in norm_out comment description
+try:
+    _DF_FEAT = pd.read_csv('data/feat_tool.csv', delimiter=';')
+except FileNotFoundError:
+    _DF_FEAT = pd.read_csv('../data/feat_tool.csv', delimiter=';')
+
+
+# ##
 # ## Top Level Functions
 # ##
 # ## ##########################################################################
@@ -107,8 +120,16 @@ def single_features(ts, **kwargs):
 # ## Catch 22
 # ##
 
-def _feat_from_catch22():
-    pass
+def _feat_from_catch22(ts):
+    """Invokes `pycatch2.catch22_all()` for the time series `ts` and returns
+    result as 1xf feature dataframe."""
+    # There is a lot of implicit knowledge in the following lines:
+    #   - all vars of catch24 are used
+    #   - input time series already normed by norm_maxabs
+    #   - all features need this norm or don't care
+    feat_dict = pycatch22.catch22_all(ts, catch24=True)
+    rect_names = _rectify_names(feat_dict['names'], 'catch22')
+    return pd.DataFrame(feat_dict['values'], index=rect_names).T
 
 
 # ##
@@ -141,6 +162,39 @@ def _feat_from_tsfresh():
 
 def _feat_from_extra():
     pass
+
+
+# ##
+# ## Common helper functions for catch22, kats, tsfel, tsfresh
+# ##
+# ## ##########################################################################
+
+def _get_tool_info_tab(src, use=True):
+    """Returns info table for oneo toolbox `src`. If `use=True`, return only
+    used features, if False, return unused, if None, return all.
+    Valid `src` strings are:
+        'catch22', 'kats', 'tsfel', 'tsfresh', 'extra'.
+    Returned df has 10 columns:
+        ID IDtool orig_name rectified_name use
+        norm_in norm_out comment description"""
+    if use is not None:
+        return _DF_FEAT.query(f"src=='{src}' & use=={use}")
+    else:
+        return _DF_FEAT.query(f"src=='{src}'")
+
+
+def _rectify_names(name_list, src=None):
+    """Changes names in a `name_list` that are returned by a toolbox to the
+    rectified names defined in _DF_FEAT. If `src` is provided, use a sublist
+    of _DF_FEAT (_get_tool_info_tab() is called with this parameter)."""
+    if src is not None:
+        df_feat = _get_tool_info_tab(src)
+    else:
+        df_feat = _DF_FEAT
+
+    name_pairs = {orig: rect for orig, rect
+                  in zip(df_feat.orig_name, df_feat.rectified_name)}
+    return [name_pairs[name] for name in name_list]
 
 
 # ##

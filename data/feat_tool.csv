@@ -1,0 +1,256 @@
+﻿ID;IDtool;src;orig_name;rectified_name;use;norm_in;norm_out;comment;description
+1;1;catch22;DN_HistogramMode_5;mode5;TRUE;_dont_care;;input implicitely z-scored;Return the location of the bin with the most counts. z-scored, 5 bins
+2;2;catch22;DN_HistogramMode_10;mode10;TRUE;_dont_care;;input implicitely z-scored;Return the location of the bin with the most counts. z-scored, 10 bins
+3;3;catch22;DN_OutlierInclude_p_001_mdrmd;outlier_timing_pos;TRUE;_dont_care;;input implicitely z-scored;whether positive over-threshold events tend to be near the start (output values near -1), approximately equally likely to be anywhere through the time series (output values near 0), or more likely  near the end (output values near 1)
+4;4;catch22;DN_OutlierInclude_n_001_mdrmd;outlier_timing_neg;TRUE;_dont_care;;input implicitely z-scored;whether negative over-threshold events tend to be near the start (output values near -1), approximately equally likely to be anywhere through the time series (output values near 0), or more likely  near the end (output values near 1)
+5;5;catch22;CO_f1ecac;acf_timescale;TRUE;_dont_care;;input implicitely z-scored, orig_name renamed from first1e_acf_tau;the first time lag at which the autocorrelation function drops below 1/e (= 0.3679). captures scale
+6;6;catch22;CO_FirstMin_ac;acf_first_min;TRUE;_dont_care;;input implicitely z-scored, orig_name renamed from firstMin_acf;irst minimum of the autocorrelation function
+7;7;catch22;SP_Summaries_welch_rect_area_5_1;low_freq_power;TRUE;_dont_care;;input implicitely z-scored;Power in lowest 20% frequencies 
+8;8;catch22;SP_Summaries_welch_rect_centroid;centroid_freq;TRUE;_dont_care;;input implicitely z-scored;Centroid frequency, frequency, , at which the amount of power in frequencies low and higher than  is the same
+9;9;catch22;FC_LocalSimple_mean3_stderr;forecast_error;TRUE;_dont_care;;input implicitely z-scored;Error of 3-point rolling mean forecast
+10;10;catch22;FC_LocalSimple_mean1_tauresrat;whiten_timescale;TRUE;_dont_care;;input implicitely z-scored;Change in autocorrelation timescale after incremental differencing. noisier signals will have low ratio
+11;11;catch22;MD_hrv_classic_pnn40;high_fluctuation;TRUE;_dont_care;;input implicitely z-scored;Proportion of high incremental changes in the series. low values to series that have periods in which the series stays approximately constantand high values to series that 'jump around alot'
+12;12;catch22;SB_BinaryStats_mean_longstretch1;stretch_high;TRUE;_dont_care;;input implicitely z-scored;Longest stretch of above-mean values
+13;13;catch22;SB_BinaryStats_diff_longstretch0;stretch_decreasing;TRUE;_dont_care;;input implicitely z-scored;Longest stretch of decreasing values
+14;14;catch22;SB_MotifThree_quantile_hh;entropy_pairs;TRUE;_dont_care;;input implicitely z-scored;Entropy of successive pairs in 3-symbolized series
+15;15;catch22;CO_HistogramAMI_even_2_5;ami2;TRUE;_dont_care;;input implicitely z-scored;Histogram-based automutual information (lag 2, 5 bins) using a nonlinear correlation metric (mutual information) using histogram with 5 bins and time delay 2
+16;16;catch22;CO_trev_1_num;trev;TRUE;_dont_care;;input implicitely z-scored;Time reversibility. will be positive if increases tend to be larger in magnitude and negative if decreases tend to be larger in magnitude.
+17;17;catch22;IN_AutoMutualInfoStats_40_gaussian_fmmi;ami_timescale;TRUE;_dont_care;;input implicitely z-scored;First minimum of the AMI function
+18;18;catch22;SB_TransitionMatrix_3ac_sumdiagcov;transition_variance;TRUE;_dont_care;;input implicitely z-scored;measure of the specificity of source states given a target state. minimum value for noisy series with approximaltely uniform transition probabilities, maximum value for highly ordered series with very specific state transition rules
+19;19;catch22;PD_PeriodicityWang_th0_01;periodicity;TRUE;_dont_care;;input implicitely z-scored, renamed orig_name from PD_PeriodicityWang_th001;Wang's periodicity metric. first peak in the autocorrelation function satisfying a set of conditions (after detrending the time series using a single-knot cubic regression spline).
+20;20;catch22;CO_Embed2_Dist_tau_d_expfit_meandiff;embedding_dist;TRUE;_dont_care;;input implicitely z-scored;Goodness of exponential fit to embedding distance distribution. It will give low values to time series where the probability distribution of the distance between consecutive time-series values in the 2-d embedding space is well approximated by an exponential distribution.
+21;21;catch22;SC_FluctAnal_2_rsrangefit_50_1_logi_prop_r1;rs_range;TRUE;_dont_care;;input implicitely z-scored,;Rescaled range fluctuation analysis (low-scale scaling)
+22;22;catch22;SC_FluctAnal_2_dfa_50_1_2_logi_prop_r1;dfa;TRUE;_dont_care;;input implicitely z-scored;Detrended fluctuation analysis (low-scale scaling)
+23;23;catch22;DN_Mean;mean;TRUE;norm_maxabs;;;mean
+24;24;catch22;DN_Spread_Std;std;TRUE;norm_maxabs;;;standard deviation
+25;1;kats;y_acf1;acf1;TRUE;z_score;;;first ACF value of the original series
+26;2;kats;y_acf5;acf5_squared_sum;TRUE;z_score;;;sum of squares of first 5 ACF values of original series
+27;3;kats;diff1y_acf1;diff1_acf1;TRUE;z_score;;;first ACF value of the differenced series
+28;4;kats;diff1y_acf5;diff1_acf5_squared_sum;TRUE;z_score;;;sum of squares of first 5 ACF values of differenced series
+29;5;kats;diff2y_acf1;diff2_acf1;TRUE;z_score;;;first ACF value of the twice-differenced series
+30;6;kats;diff2y_acf5;diff2_acf5_squared_sum;TRUE;z_score;;;sum of squares of first 5 ACF values of twice-differenced series
+31;7;kats;y_pacf5;pacf5_squared_sum;TRUE;z_score;;;sum of squares of first 5 PACF values of original series
+32;8;kats;diff1y_pacf5;diff1_pacf5_squared_sum;TRUE;z_score;;;sum of squares of first 5 PACF values of differenced series
+33;9;kats;diff2y_pacf5;diff2_pacf5_squared_sum;TRUE;z_score;;;sum of squares of first 5 PACF values of twice-differenced series
+34;12;kats;bocp_num;bocp_num;TRUE;_dont_care;;;number of changepoints, bayesian online change point detection, i.e. it tells us when the time series shows a change
+35;13;kats;bocp_conf_max;bocp_conf_max;TRUE;_dont_care;;;changepoint detection, max conf interval
+36;14;kats;bocp_conf_mean;bocp_conf_mean;TRUE;_dont_care;;;changepoint detection, mean conf interval
+37;23;kats;holt_alpha;holt_alpha;TRUE;_dont_care;;;Level parameter of the Holt model (Exponential Smoothing)
+38;24;kats;holt_beta;holt_beta;TRUE;_dont_care;;;Trend parameter of the Holt model. (Expoinential Smoothing)
+39;25;kats;hw_alpha;hw_alpha;TRUE;_dont_care;;;Level parameter of the Holt Winter model
+40;26;kats;hw_beta;hw_beta;TRUE;_dont_care;;;Trend parameter of the Holt Winter model
+41;27;kats;hw_gamma;hw_gamma;TRUE;_dont_care;;;Seasonallity parameter of the Holt Winter model
+42;37;kats;outlier_num;outlier_num;TRUE;_dont_care;;;Number of outliers by the Outlier Detector. mimics the outlier detection algorithm in R
+43;38;kats;robust_num;rcp_num;TRUE;_dont_care;;;Number changepoints detected by the Robust Stat Detector.
+44;39;kats;robust_metric_mean;rcp_metric_mean;TRUE;_dont_care;;;Mean of the Metric values from the Robust Stat Detector.
+45;45;kats;firstzero_ac;acf_first_zero;TRUE;z_score;;;the time of first zero crossing the autocorrelation function.
+46;49;kats;entropy;entropy_shannon;TRUE;z_score;;;Shannon Entropy
+47;53;kats;hurst;hurst;TRUE;z_score;;;The Hurst Exponent of the time series array
+48;54;kats;std1st_der;diff1_std;TRUE;_dont_care;;;standard deviation of the first derivative of the time series.
+49;55;kats;crossing_points;cross_median;TRUE;_dont_care;;;Crossing points happen when a time series crosses the median line.
+50;56;kats;binarize_mean;binarize_mean;TRUE;_dont_care;;;Time-series values above its mean are given 1, and those below the mean are 0. Returns the average value of the binarized vector.
+51;57;kats;unitroot_kpss;unitroot_kpss;TRUE;z_score;;;test statistic based on KPSS test. Kwiatkowski–Phillips–Schmidt–Shin (KPSS) tests
+52;58;kats;heterogeneity;engles_heterogeneneity;TRUE;z_score;;;Engle's test for autogregressive Conditional Heteroscedasticity (ARCH).
+53;60;kats;linearity;linearity;TRUE;_dont_care;;;R square from a fitted linear regression.
+54;61;kats;trend_strength;stl_trend_strength;TRUE;z_score;;;STL seasonality trend decomposition using LOESS with statsmodels, trend strength
+55;62;kats;seasonality_strength;stl_seasonality_strength;TRUE;z_score;;;STL seasonality trend decomposition using LOESS with statsmodels, seasonality strength
+56;63;kats;spikiness;stl_spikiness;TRUE;z_score;;;STL seasonality trend decomposition using LOESS with statsmodels, variance of the leave-one-out variances of the remainder component
+57;64;kats;peak;stl_peak;TRUE;z_score;;;STL seasonality trend decomposition using LOESS with statsmodels, location of peak
+58;65;kats;trough;stl_trough;TRUE;z_score;;;STL seasonality trend decomposition using LOESS with statsmodels, location of trough
+59;82;kats;trend_num;mk_trend_num;TRUE;z_score;;;number of trends, MKDetector (MK stands for Mann-Kendall) is a non-parametric statistical Trend Detector
+60;83;kats;trend_num_increasing;mk_num_increasing;TRUE;z_score;;;number of increasing trends, MKDetector
+61;84;kats;trend_avg_abs_tau;mk_avg_abs_tau;TRUE;z_score;;;Mean of the abolute values of Taus of the trends detected (Kendall Tau-b statistic)
+62;4;tsfel;calc_centroid(signal, fs) ;centroid;TRUE;_dont_care;;;Computes the centroid along the time axis.
+63;5;tsfel;calc_max(signal) ;max;TRUE;norm_maxabs;;;Computes the maximum value of the signal.
+64;7;tsfel;calc_median(signal) ;median;TRUE;norm_maxabs;;;Computes median of the signal.
+65;8;tsfel;calc_min(signal) ;min;TRUE;norm_maxabs;;;Computes the minimum value of the signal.
+66;10;tsfel;calc_var(signal) ;;TRUE;norm_maxabs;;scales with std^2;Computes variance of the signal.
+67;11;tsfel;distance(signal) ;traveled_dist;TRUE;norm_maxabs;;;Computes signal traveled distance.
+68;13;tsfel;ecdf_percentile(signal[, 0.99]) ;ecdf99_norm;TRUE;norm_maxabs;;only reasonable for maxabs input;Computes the percentile values of the ECDF. at 99 percent
+69;14;tsfel;ecdf_percentile(signal[, 0.95]) ;ecdf95_norm;TRUE;norm_maxabs;;only reasonable for maxabs input;Computes the percentile values of the ECDF. at 95 percent
+70;15;tsfel;ecdf_percentile(signal[, 0.8]) ;ecdf80_norm;TRUE;norm_maxabs;;only reasonable for maxabs input;Computes the percentile values of the ECDF. at 80 percent
+71;16;tsfel;ecdf_percentile(signal[, 0.2]) ;ecdf20_norm;TRUE;norm_maxabs;;only reasonable for maxabs input;Computes the percentile values of the ECDF. at 20 percent
+72;17;tsfel;ecdf_percentile(signal[, 0.05]) ;ecdf05_norm;TRUE;norm_maxabs;;only reasonable for maxabs input;Computes the percentile values of the ECDF. at 5 percent
+73;18;tsfel;ecdf_percentile(signal[, 0.01]) ;ecdf01_norm;TRUE;norm_maxabs;;only reasonable for maxabs input;Computes the percentile values of the ECDF. at 1 percent
+74;22;tsfel;fundamental_frequency(signal, fs) ;fund_freq;TRUE;z_score;;;Computes fundamental frequency of the signal.
+75;25;tsfel;interq_range(signal) ;iqr_norm;TRUE;norm_maxabs;;only reasonable for maxabs input;Computes interquartile range of the signal.
+76;26;tsfel;kurtosis(signal) ;kurtosis;TRUE;z_score;;;Computes kurtosis of the signal.
+77;28;tsfel;max_frequency(signal, fs) ;max_freq95;TRUE;z_score;;;Computes maximum frequency of the signal. 95% of energy in fft
+78;29;tsfel;max_power_spectrum(signal, fs) ;fund_freq_val;TRUE;z_score;;;Computes maximum power spectrum density of the signal. should correnspond to fundamental frequency
+79;30;tsfel;mean_abs_deviation(signal) ;mean_diff_from_mean;TRUE;norm_maxabs;;;Computes mean absolute deviation of the signal. the mean of all deviatians from the mean, should correlate with std
+80;31;tsfel;mean_abs_diff(signal) ;mean_of_abs_diff;TRUE;norm_maxabs;;;Computes mean absolute differences of the signal. mean of discrete derivative/mean of changes, absolute value
+81;32;tsfel;mean_diff(signal) ;mean_of_signed_diff;TRUE;norm_maxabs;;;Computes mean of differences of the signal. as above, but not absolute but signed
+82;33;tsfel;median_abs_deviation(signal) ;median_diff_from_mean;TRUE;norm_maxabs;;;Computes median absolute deviation of the signal.
+83;34;tsfel;median_abs_diff(signal) ;median_of_abs_diff;TRUE;norm_maxabs;;;Computes median absolute differences of the signal.
+84;35;tsfel;median_diff(signal) ;median_of_signed_diff;TRUE;norm_maxabs;;;Computes median of differences of the signal.
+85;36;tsfel;median_frequency(signal, fs) ;freq_median;TRUE;z_score;;;Computes median frequency of the signal.
+86;40;tsfel;pk_pk_distance(signal) ;peak2peak;TRUE;norm_maxabs;;;Computes the peak to peak distance. min - max
+87;42;tsfel;power_bandwidth(signal, fs) ;power_bandwidth;TRUE;z_score;;;Computes power spectrum density bandwidth of the signal. bandwidth from 5% to 95% of power spectrum
+88;43;tsfel;rms(signal) ;rms;TRUE;norm_maxabs;;;Computes root mean square of the signal.
+89;44;tsfel;skewness(signal) ;skewness;TRUE;z_score;;;Computes skewness of the signal.
+90;45;tsfel;slope(signal) ;slope;TRUE;norm_maxabs;;;Computes the slope of the signal.
+91;46;tsfel;spectral_centroid(signal, fs) ;freq_centroid;TRUE;z_score;;;Barycenter of the spectrum.
+92;47;tsfel;spectral_decrease(signal, fs) ;freq_decrease;TRUE;z_score;;;Represents the amount of decreasing of the spectra amplitude. should be slope in freq domain
+93;48;tsfel;spectral_distance(signal, fs) ;freq_distance;TRUE;z_score;;;Computes the signal spectral distance.
+94;49;tsfel;spectral_entropy(signal, fs) ;entropy_spectral;TRUE;z_score;;;Computes the spectral entropy of the signal based on Fourier transform.
+95;50;tsfel;spectral_kurtosis(signal, fs) ;freq_kurtosis;TRUE;z_score;;;Measures the flatness of a distribution around its mean value.
+96;52;tsfel;spectral_roll_off(signal, fs) ;spectral_roll_off;TRUE;z_score;;;Computes the spectral roll-off of the signal. frequency where 95% of power in spectrum
+97;53;tsfel;spectral_roll_on(signal, fs) ;spectral_roll_on;TRUE;z_score;;;Computes the spectral roll-on of the signal. frequency where 5% of power in spectrum
+98;54;tsfel;spectral_skewness(signal, fs) ;freq_skewness;TRUE;z_score;;;Measures the asymmetry of a distribution around its mean value.
+99;56;tsfel;spectral_spread(signal, fs) ;freq_spread;TRUE;z_score;;;Measures the spread of the spectrum around its mean value.
+100;57;tsfel;spectral_variation(signal, fs) ;freq_variation;TRUE;z_score;;should correlate with spectral_spread;Computes the amount of variation of the spectrum along time.
+101;59;tsfel;total_energy(signal, fs) ;total_energy;TRUE;norm_maxabs;;redundant, scales with rms^2;Computes the total energy of the signal. rms squared
+102;65;tsfel;zero_cross(signal) ;cross_zero;TRUE;norm_maxabs;;;Computes Zero-crossing rate of the signal. number of zero crossings
+103;14;tsfresh;cid_ce(x, normalize)    ;cid;TRUE;norm_maxabs;;;This function calculator is an estimate for a time series complexity [1] (A more complex time series has more peaks, valleys etc.). complexity-invariant distance for time series
+104;16;tsfresh;count_above_mean(x)     ;perc_above_mean;TRUE;_dont_care;abs_to_rel;;Returns the number of values in x that are higher than the mean of x
+105;18;tsfresh;count_below_mean(x)     ;perc_below_mean;TRUE;_dont_care;abs_to_rel;;Returns the number of values in x that are lower than the mean of x
+106;23;tsfresh;first_location_of_maximum(x)    ;loc_of_first_max;TRUE;_dont_care;;already normalized to abs_to_rel;Returns the first location of the maximum value of x.
+107;24;tsfresh;first_location_of_minimum(x)    ;loc_of_first_min;TRUE;_dont_care;;already normalized to abs_to_rel;Returns the first location of the minimal value of x.
+108;33;tsfresh;last_location_of_maximum(x)     ;loc_of_last_max;TRUE;_dont_care;;already normalized to abs_to_rel;Returns the relative last location of the maximum value of x.
+109;34;tsfresh;last_location_of_minimum(x)     ;loc_of_last_min;TRUE;_dont_care;;already normalized to abs_to_rel;Returns the last location of the minimal value of x.
+110;39;tsfresh;longest_strike_above_mean(x)    ;longest_strike_above_mean;TRUE;_dont_care;abs_to_rel;;Returns the length of the longest consecutive subsequence in x that is bigger than the mean of x
+111;40;tsfresh;longest_strike_below_mean(x)    ;longest_strike_below_mean;TRUE;_dont_care;abs_to_rel;;Returns the length of the longest consecutive subsequence in x that is smaller than the mean of x
+112;48;tsfresh;mean_second_derivative_central(x)   ;mean_2nd_diff;TRUE;_dont_care;;;Returns the mean value of a central approximation of the second derivative
+113;64;tsfresh;sample_entropy(x)   ;entropy_sample;TRUE;_dont_care;;;Calculate and return sample entropy of x.
+114;77;tsfresh;variation_coefficient(x)    ;variation_coeff;TRUE;norm_maxabs;;;Returns the variation coefficient (standard error / mean, give relative value of variation around mean) of x.
+115;1;extra;average rectified value;arv;TRUE;norm_maxabs;;;average rectified value
+116;2;extra;crest factor;crest;TRUE;norm_maxabs;;;max/rms
+117;3;extra;shape factor;shape;TRUE;norm_maxabs;;;rms/arv
+118;4;extra;impulse factor;impulse;TRUE;norm_maxabs;;;max/arv
+119;5;extra;clearance factor;clearance;TRUE;norm_maxabs;;;max/(mean(sqrt(abs()))^2)
+0;10;kats;seas_acf1;;FALSE;;;not reasonable without period information;Autocorrelation coefficient at the first seasonal lag.
+0;11;kats;seas_pacf1;;FALSE;;;not reasonable without period information;Patial Autocorrelation coefficient at the first seasonal lag.
+0;15;kats;cusum_num;;FALSE;;;only bool output,  not exploitable;number of changepoints, cumulative sum changepoint detection
+0;16;kats;cusum_conf;;FALSE;;;not applicable as main metrix is not exploitable;confidence of cusum
+0;17;kats;cusum_cp_index;;FALSE;;;not applicable as main metrix is not exploitable;index of found change of cusum
+0;18;kats;cusum_delta;;FALSE;;;not applicable as main metrix is not exploitable;mean delta of before and after of change in cusum
+0;19;kats;cusum_llr;;FALSE;;;not applicable as main metrix is not exploitable;log likelihood ratio of changepoint
+0;20;kats;cusum_regression_detected;;FALSE;;;not applicable as main metrix is not exploitable;bool, whether regression is detected by cusum
+0;21;kats;cusum_stable_changepoint;;FALSE;;;not applicable as main metrix is not exploitable;bool, whether changepoint is stable by cusum
+0;22;kats;cusum_p_value;;FALSE;;;not applicable as main metrix is not exploitable;p value of changepoint by cusum
+0;28;kats;level_shift_idx;;FALSE;;;parameter needed;Location of the maximum mean value difference, between two consecutive sliding windows
+0;29;kats;level_shift_size;;FALSE;;;parameter needed;Size of the maximum mean value difference, between two consecutive sliding windows
+0;30;kats;nowcast_roc;;FALSE;;;parameter needed;Nowcasting Short term forcasting, return comparing to step n back.
+0;31;kats;nowcast_ma;;FALSE;;;parameter needed;Nowcasting Short term forcasting, momentum: difference of current value and n steps back.
+0;32;kats;nowcast_mom;;FALSE;;;parameter needed;Nowcasting Short term forcasting, indicating moving average in the past n steps.
+0;33;kats;nowcast_lag;;FALSE;;;parameter needed;Nowcasting Short term forcasting, indicating lagged value at the past n steps.
+0;34;kats;nowcast_macd;;FALSE;;;parameter needed;Nowcasting Short term forcasting, Moving Average Convergence/Divergence
+0;35;kats;nowcast_macdsign;;FALSE;;;parameter needed;Nowcasting Short term forcasting, Moving Average Convergence/Divergence sign
+0;36;kats;nowcast_macddiff;;FALSE;;;parameter needed;Nowcasting Short term forcasting, Moving Average Convergence/Divergence diff
+0;40;kats;seasonal_period;;FALSE;;;ill defined fallback if no seasonality found;Seasonality by Fast Fourier Transform Seasoanlity detector
+0;41;kats;trend_mag;;FALSE;;;not applicable as main metrix is not exploitable;fft seasonality detector trend magnitude
+0;42;kats;seasonality_mag;;FALSE;;;not applicable as main metrix is not exploitable;fft seasonality detector seasoanlity magnitude
+0;43;kats;residual_std;;FALSE;;;not applicable as main metrix is not exploitable;fft seasonality detector residual standard deviation
+0;44;kats;firstmin_ac;;FALSE;;;catch24;the time of first minimum in the autocorrelation function
+0;46;kats;length;;FALSE;;;1000 by definition of signals;length of signal
+0;47;kats;mean;;FALSE;;;catch24;
+0;48;kats;var;;FALSE;;;catch24;
+0;50;kats;lumpiness;;FALSE;;;parameter needed;Lumpiness is defined as the variance of the chunk-wise variances.
+0;51;kats;stability;;FALSE;;;parameter needed;Stability is defined as the variance of chunk-wise means.
+0;52;kats;flat_spots;;FALSE;;;parameter needed;Maximum run-lengths across equally-sized segments of time series
+0;59;kats;histogram_mode;;FALSE;;;catch24;mode for 10 bin histogram
+0;66;kats;time_years;;FALSE;;;not applicable for time series without timestamps;
+0;67;kats;time_months;;FALSE;;;not applicable for time series without timestamps;
+0;68;kats;time_monthsofyear;;FALSE;;;not applicable for time series without timestamps;
+0;69;kats;time_weeks;;FALSE;;;not applicable for time series without timestamps;
+0;70;kats;time_weeksofyear;;FALSE;;;not applicable for time series without timestamps;
+0;71;kats;time_days;;FALSE;;;not applicable for time series without timestamps;
+0;72;kats;time_daysofyear;;FALSE;;;not applicable for time series without timestamps;
+0;73;kats;time_avg_timezone_offset;;FALSE;;;not applicable for time series without timestamps;
+0;74;kats;time_length_days;;FALSE;;;not applicable for time series without timestamps;
+0;75;kats;time_freq_Monday;;FALSE;;;not applicable for time series without timestamps;
+0;76;kats;time_freq_Tuesday;;FALSE;;;not applicable for time series without timestamps;
+0;77;kats;time_freq_Wednesday;;FALSE;;;not applicable for time series without timestamps;
+0;78;kats;time_freq_Thursday;;FALSE;;;not applicable for time series without timestamps;
+0;79;kats;time_freq_Friday;;FALSE;;;not applicable for time series without timestamps;
+0;80;kats;time_freq_Saturday;;FALSE;;;not applicable for time series without timestamps;
+0;81;kats;time_freq_Sunday;;FALSE;;;not applicable for time series without timestamps;
+0;1;tsfel;abs_energy(signal) ;;FALSE;;;not meaningful if total_energy and rms is present;Computes the absolute energy of the signal. rms not weithed by time
+0;2;tsfel;auc(signal, fs) ;;FALSE;;;paper, equals arv;Computes the area under the curve of the signal computed with trapezoid rule. negative parts are positive areas
+0;3;tsfel;autocorr(signal) ;;FALSE;;;does not make sense without lag;Computes autocorrelation of the signal.
+0;6;tsfel;calc_mean(signal) ;;FALSE;;;catch24;Computes mean value of the signal.
+0;9;tsfel;calc_std(signal) ;;FALSE;;;catch24;Computes standard deviation (std) of the signal.
+0;12;tsfel;ecdf(signal[, d]) ;;FALSE;;;not a scalar;Computes the values of ECDF (empirical cumulative distribution function) along the time axis.
+0;19;tsfel;ecdf_percentile_count(signal[, percentile]) ;;FALSE;;;redundant with above for fixed length;Computes the cumulative sum of samples that are less than the percentile.
+0;20;tsfel;entropy(signal[, prob]) ;;FALSE;;;kats;Computes the entropy of the signal using the Shannon Entropy.
+0;21;tsfel;fft_mean_coeff(signal, fs[, nfreq]) ;;FALSE;;;not a scalar;Computes the mean value of each spectrogram frequency.
+0;23;tsfel;hist(signal[, nbins, r]) ;;FALSE;;;not a scalar;Computes histogram of the signal.
+0;24;tsfel;human_range_energy(signal, fs) ;;FALSE;;;arbitrary energy range;Computes the human range energy ratio.
+0;27;tsfel;lpcc(signal[, n_coeff]) ;;FALSE;;;not a scalar;Computes the linear prediction cepstral coefficients.
+0;37;tsfel;mfcc(signal, fs[, pre_emphasis, nfft, …]) ;;FALSE;;;not a scalar;Computes the MEL cepstral coefficients.
+0;38;tsfel;negative_turning(signal) ;;FALSE;;;ill defined, sensitive to even low noise;Computes number of negative turning points of the signal. Turning point = derivative is zero, i.e. change in sign in diff in discrete signal
+0;39;tsfel;neighbourhood_peaks(signal[, n]) ;;FALSE;;;arbitrary parameter needed;Computes the number of peaks from a defined neighbourhood of the signal.
+0;41;tsfel;positive_turning(signal) ;;FALSE;;;ill defined, sensitive to even low noise;Computes number of positive turning points of the signal.
+0;51;tsfel;spectral_positive_turning(signal, fs) ;;FALSE;;;ill defined, sensitive to even low noise;Computes number of positive turning points of the fft magnitude signal.
+0;55;tsfel;spectral_slope(signal, fs) ;;FALSE;;;not a scalar;Computes the spectral slope.
+0;58;tsfel;sum_abs_diff(signal) ;;FALSE;;;should scale with mean abs diff for const length signals;Computes sum of absolute differences of the signal.
+0;60;tsfel;wavelet_abs_mean(signal[, function, widths]) ;;FALSE;;;not a scalar, arbitrary parameter needed;Computes CWT absolute mean value of each wavelet scale.
+0;61;tsfel;wavelet_energy(signal[, function, widths]) ;;FALSE;;;arbitrary parameter needed;Computes CWT energy of each wavelet scale.
+0;62;tsfel;wavelet_entropy(signal[, function, widths]) ;;FALSE;;;arbitrary parameter needed;Computes CWT entropy of the signal.
+0;63;tsfel;wavelet_std(signal[, function, widths]) ;;FALSE;;;arbitrary parameter needed;Computes CWT std value of each wavelet scale.
+0;64;tsfel;wavelet_var(signal[, function, widths]) ;;FALSE;;;arbitrary parameter needed;Computes CWT variance value of each wavelet scale.
+0;1;tsfresh;abs_energy(x)   ;;FALSE;;;tsfel;Returns the absolute energy of the time series which is the sum over the squared values
+0;2;tsfresh;absolute_maximum(x)     ;;FALSE;;;1 by definition of signals;Calculates the highest absolute value of the time series x.
+0;3;tsfresh;absolute_sum_of_changes(x)  ;;FALSE;;;tsfel;Returns the sum over the absolute value of consecutive changes in the series x
+0;4;tsfresh;agg_autocorrelation(x, param)   ;;FALSE;;;not a scalar, parameter needed;Descriptive statistics on the autocorrelation of the time series.
+0;5;tsfresh;agg_linear_trend(x, param)  ;;FALSE;;;not a scalar, parameter needed;Calculates a linear least-squares regression for values of the time series that were aggregated over chunks versus the sequence from 0 up to the number of chunks minus one.
+0;6;tsfresh;approximate_entropy(x, m, r)    ;;FALSE;;;parameter needed;Implements a vectorized Approximate entropy algorithm.
+0;7;tsfresh;ar_coefficient(x, param)    ;;FALSE;;;not a scalar, parameter needed;This feature calculator fits the unconditional maximum likelihood of an autoregressive AR(k) process.
+0;8;tsfresh;augmented_dickey_fuller(x, param)   ;;FALSE;;;not a scalar, parameter needed;Does the time series have a unit root?
+0;9;tsfresh;autocorrelation(x, lag)     ;;FALSE;;;not a scalar, parameter needed;Calculates the autocorrelation of the specified lag, according to the formula [1]
+0;10;tsfresh;benford_correlation(x)  ;;FALSE;;;not reasonable for normalized signals;Useful for anomaly detection applications [1][2]. Returns the correlation from first digit distribution when
+0;11;tsfresh;binned_entropy(x, max_bins)     ;;FALSE;;;parameter needed;First bins the values of x into max_bins equidistant bins.
+0;12;tsfresh;c3(x, lag)  ;;FALSE;;;parameter needed;Uses c3 statistics to measure non linearity in the time series
+0;13;tsfresh;change_quantiles(x, ql, qh, isabs, f_agg)   ;;FALSE;;;parameter needed;First fixes a corridor given by the quantiles ql and qh of the distribution of x.
+0;15;tsfresh;count_above(x, t)   ;;FALSE;;;parameter needed;Returns the percentage of values in x that are higher than t
+0;17;tsfresh;count_below(x, t)   ;;FALSE;;;;Returns the percentage of values in x that are lower than t
+0;19;tsfresh;cwt_coefficients(x, param)  ;;FALSE;;;parameter needed;Calculates a Continuous wavelet transform for the Ricker wavelet, also known as the "Mexican hat wavelet" which is defined by
+0;20;tsfresh;energy_ratio_by_chunks(x, param)    ;;FALSE;;;parameter needed;Calculates the sum of squares of chunk i out of N chunks expressed as a ratio with the sum of squares over the whole series.
+0;21;tsfresh;fft_aggregated(x, param)    ;;FALSE;;;parameter needed;Returns the spectral centroid (mean), variance, skew, and kurtosis of the absolute fourier transform spectrum.
+0;22;tsfresh;fft_coefficient(x, param)   ;;FALSE;;;not a scalar, parameter needed;Calculates the fourier coefficients of the one-dimensional discrete Fourier Transform for real input by fast fourier transformation algorithm
+0;25;tsfresh;fourier_entropy(x, bins)    ;;FALSE;;;parameter needed;Calculate the binned entropy of the power spectral density of the time series (using the welch method).
+0;26;tsfresh;friedrich_coefficients(x, param)    ;;FALSE;;;parameter needed;Coefficients of polynomial h(x), which has been fitted to the deterministic dynamics of Langevin model
+0;27;tsfresh;has_duplicate(x)    ;;FALSE;;;bool;Checks if any value in x occurs more than once
+0;28;tsfresh;has_duplicate_max(x)    ;;FALSE;;;bool;Checks if the maximum value of x is observed more than once
+0;29;tsfresh;has_duplicate_min(x)    ;;FALSE;;;bool;Checks if the minimal value of x is observed more than once
+0;30;tsfresh;index_mass_quantile(x, param)   ;;FALSE;;;parameter needed;Calculates the relative index i of time series x where q% of the mass of x lies left of i.
+0;31;tsfresh;kurtosis(x)     ;;FALSE;;;tsfel;Returns the kurtosis of x (calculated with the adjusted Fisher-Pearson standardized moment coefficient G2).
+0;32;tsfresh;large_standard_deviation(x, r)  ;;FALSE;;;bool, parameter needed;Does time series have large standard deviation?
+0;35;tsfresh;lempel_ziv_complexity(x, bins)  ;;FALSE;;;parameter needed;Calculate a complexity estimate based on the Lempel-Ziv compression algorithm.
+0;36;tsfresh;length(x);;FALSE;;;1000 by definition of signals;Returns the length of x
+0;37;tsfresh;linear_trend(x, param)  ;;FALSE;;;not a scalar;Calculate a linear least-squares regression for the values of the time series versus the sequence from 0 to length of the time series minus one.
+0;38;tsfresh;linear_trend_timewise(x, param)     ;;FALSE;;;not a scalar;Calculate a linear least-squares regression for the values of the time series versus the sequence from 0 to length of the time series minus one.
+0;41;tsfresh;matrix_profile(x, param)    ;;FALSE;;;not a scalar;Calculates the 1-D Matrix Profile[1] and returns Tukey's Five Number Set plus the mean of that Matrix Profile.
+0;42;tsfresh;max_langevin_fixed_point(x, r, m)   ;;FALSE;;;not a scalar;Largest fixed point of dynamics :math:argmax_x {h(x)=0}` estimated from polynomial h(x), which has been fitted to the deterministic dynamics of Langevin model
+0;43;tsfresh;maximum(x)  ;;FALSE;;;tsfel;Calculates the highest value of the time series x.
+0;44;tsfresh;mean(x)     ;;FALSE;;;tsfel;Returns the mean of x
+0;45;tsfresh;mean_abs_change(x)  ;;FALSE;;;tsfel;Average over first differences.
+0;46;tsfresh;mean_change(x)  ;;FALSE;;;tsfel;Average over time series differences.
+0;47;tsfresh;mean_n_absolute_max(x, number_of_maxima)    ;;FALSE;;;not a scalar;Calculates the arithmetic mean of the n absolute maximum values of the time series.
+0;49;tsfresh;median(x)   ;;FALSE;;;tsfel;Returns the median of x
+0;50;tsfresh;minimum(x)  ;;FALSE;;;tsfel;Calculates the lowest value of the time series x.
+0;51;tsfresh;number_crossing_m(x, m)     ;;FALSE;;;parameter needed;Calculates the number of crossings of x on m.
+0;52;tsfresh;number_cwt_peaks(x, n)  ;;FALSE;;;not a scalar;Number of different peaks in x.
+0;53;tsfresh;number_peaks(x, n)  ;;FALSE;;;parameter needed;Calculates the number of peaks of at least support n in the time series x.
+0;54;tsfresh;partial_autocorrelation(x, param)   ;;FALSE;;;parameter needed;Calculates the value of the partial autocorrelation function at the given lag.
+0;55;tsfresh;percentage_of_reoccurring_datapoints_to_all_datapoints(x)   ;;FALSE;;;not reasonable for continuous time series;Returns the percentage of non-unique data points.
+0;56;tsfresh;percentage_of_reoccurring_values_to_all_values(x)   ;;FALSE;;;not reasonable for continuous time series;Returns the percentage of values that are present in the time series more than once.
+0;57;tsfresh;permutation_entropy(x, tau, dimension)  ;;FALSE;;;parameter needed;Calculate the permutation entropy.
+0;58;tsfresh;quantile(x, q)  ;;FALSE;;;parameter needed;Calculates the q quantile of x.
+0;59;tsfresh;query_similarity_count(x, param)    ;;FALSE;;;parameter needed;This feature calculator accepts an input query subsequence parameter, compares the query (under z-normalized Euclidean distance) to all subsequences within the time series, and returns a count of the number of times the query was found in the time series (within some predefined maximum distance threshold).
+0;60;tsfresh;range_count(x, min, max)    ;;FALSE;;;parameter needed;Count observed values within the interval [min, max).
+0;61;tsfresh;ratio_beyond_r_sigma(x, r)  ;;FALSE;;;parameter needed;Ratio of values that are more than r * std(x) (so r times sigma) away from the mean of x.
+0;62;tsfresh;ratio_value_number_to_time_series_length(x)     ;;FALSE;;;not reasonable for continuous time series;Returns a factor which is 1 if all values in the time series occur only once, and below one if this is not the case.
+0;63;tsfresh;root_mean_square(x)     ;;FALSE;;;tsfel;Returns the root mean square (rms) of the time series.
+0;65;tsfresh;set_property(key, value)    ;;FALSE;;;not a parameter;This method returns a decorator that sets the property key of the function to value
+0;66;tsfresh;skewness(x)     ;;FALSE;;;tsfel;Returns the sample skewness of x (calculated with the adjusted Fisher-Pearson standardized moment coefficient G1).
+0;67;tsfresh;spkt_welch_density(x, param)    ;;FALSE;;;parameter needed;This feature calculator estimates the cross power spectral density of the time series x at different frequencies.
+0;68;tsfresh;standard_deviation(x)   ;;FALSE;;;tsfel;Returns the standard deviation of x
+0;69;tsfresh;sum_of_reoccurring_data_points(x)   ;;FALSE;;;not reasonable for continuous time series;Returns the sum of all data points, that are present in the time series more than once.
+0;70;tsfresh;sum_of_reoccurring_values(x)    ;;FALSE;;;not reasonable for continuous time series;Returns the sum of all values, that are present in the time series more than once.
+0;71;tsfresh;sum_values(x)   ;;FALSE;;;scales with mean;Calculates the sum over the time series values
+0;72;tsfresh;symmetry_looking(x, param)  ;;FALSE;;;bool, parameter needed;Boolean variable denoting if the distribution of x looks symmetric.
+0;73;tsfresh;time_reversal_asymmetry_statistic(x, lag)   ;;FALSE;;;parameter needed;Returns the time reversal asymmetry statistic.
+0;74;tsfresh;value_count(x, value)   ;;FALSE;;;parameter needed;Count occurrences of value in time series x.
+0;75;tsfresh;variance(x)     ;;FALSE;;;tsfel;Returns the variance of x
+0;76;tsfresh;variance_larger_than_standard_deviation(x)  ;;FALSE;;;bool;Is variance higher than the standard deviation?
