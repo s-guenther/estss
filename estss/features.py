@@ -123,7 +123,8 @@ def single_features(ts, **kwargs):
 
 def _feat_from_catch22(ts):
     """Invokes `pycatch2.catch22_all()` for the time series `ts` and returns
-    result as 1xf feature dataframe."""
+    result as 1xf feature dataframe.
+    The function uses info of the module variable `_DF_FEAT`"""
     # There is a lot of implicit knowledge in this function:
     #   - all vars of catch24 are used
     #   - input time series already normed by norm_maxabs
@@ -140,7 +141,8 @@ def _feat_from_catch22(ts):
 
 def _feat_from_kats(ts):
     """Invokes kats feature calculation for the time series `ts` and returns
-    result as 1xf feature dataframe."""
+    result as 1xf feature dataframe.
+    The function uses info of the module variable `_DF_FEAT`"""
     # Implicit knowledge in this function:
     #   - all used vars of kats use z-scored ts or don't care
 
@@ -163,8 +165,83 @@ def _feat_from_kats(ts):
 # ## Tsfel
 # ##
 
-def _feat_from_tsfel():
-    pass
+def _feat_from_tsfel(ts):
+    """Invokes tsfel feature calculation for the time series `ts` and returns
+    result as 1xf feature dataframe.
+    The function uses info of the module variable `_DF_FEAT`"""
+    # Implicit knowledge in this function
+    #   - there are some features that require z-scored data, some require
+    #     maxabs normed data, some don't care
+    #   - Input `ts` is expected to be normed to max abs
+    feat_tab = _get_tool_info_tab('tsfel')
+    # call actual extraction routine for subtab with norm_in == norm_maxabs
+    feat_df_maxabs = _feat_from_tsfel_subtab(
+        ts,
+        feat_tab.query("norm_in == 'norm_maxabs' | norm_in == '_dont_care'")
+    )
+    # call actual extraction routine for subtab with norm_in == z_score
+    feat_df_zscore = _feat_from_tsfel_subtab(
+        util.norm_zscore(ts),
+        feat_tab.query("norm_in == 'z_score'")
+    )
+    # merge both results
+    return pd.concat([feat_df_maxabs, feat_df_zscore], axis=1)
+
+
+def _feat_from_tsfel_subtab(ts, subtab):
+    """Actual invocation routine for tsfel. Calcs features for time series
+    `ts` for the features defined in data frame `subtab`. `subtab` is expected
+    to be extracted from tsfel-tab by `_feat_from_tsfel` superfunction"""
+    cfg = _parse_tsfel_tab_to_dict(subtab)
+    df_ts = pd.DataFrame(data=dict(ts=ts))
+    feat_df = tsfel.time_series_features_extractor(cfg, df_ts)  # noqa
+    _strip_0_in_colnames(feat_df)
+    _rectify_names(feat_df)
+    return feat_df
+
+
+def _parse_tsfel_tab_to_dict(tab):
+    """Uses the information of the table `tab` about the tsfel vars and
+    parses them as a config dict that satisfies the cfg requirements of
+    tsfel.
+    The `tab` has a column `parse_info` containing a string that encodes
+        <domain> <function_name> [<para1>=<val1> <para2>=<val2> ...]"""
+    names = list(tab.orig_name)
+    parse_info = list(tab.parse_info)
+    descriptions = list(tab.description)
+    cfg = dict()
+    for n, pi, desc in zip(names, parse_info, descriptions):
+        # parse parse info `pi` string
+        domain, fcn, *paras = pi.split(' ')
+        # parse paras list, if existent, else return empty string
+        if not paras:
+            pdict = ''
+        else:
+            pdict = {}
+            for p in paras:
+                k, v = p.split('=')
+                pdict[k] = float(v)
+        # create domain subdict in cfg superdict, if not existent
+        if domain not in cfg:
+            cfg[domain] = dict()
+        # add feature to domain subdict
+        cfg[domain][n] = {
+            'complexity': 'constant',
+            'description': desc,
+            'function': fcn,
+            'parameters': pdict,
+            'n_features': 1,
+            'use': 'yes'
+        }
+    return cfg
+
+
+def _strip_0_in_colnames(df):
+    """Column names in `df` that are returned by tsfel are prepended by
+    `0_`. This is removed."""
+    colnames = df.columns.values
+    newnames = {old: old.lstrip('0_') for old in colnames}
+    df.rename(columns=newnames, inplace=True)
 
 
 # ##
@@ -235,16 +312,11 @@ def __minimal_test():
 
     feat_c24 = pycatch22.catch22_all(r, catch24=True)
 
+    cfg = tsfel.get_features_by_domain()
+    r_df_tsfel = pd.DataFrame(data=dict(r1=r, r2=r))
+    feat_tsfel = tsfel.time_series_features_extractor(cfg, r_df_tsfel)  # noqa
+
     r_df_fresh = pd.DataFrame(data=dict(data=r, id=[1]*len(r)))
     feat_tsfresh = tsfresh.extract_features(r_df_fresh, column_id="id")
 
-    cfg = tsfel.get_features_by_domain()
-    r_df_fel = pd.DataFrame(data=dict(r1=r, r2=r))
-    feat_tsfel = tsfel.time_series_features_extractor(cfg, r_df_fel)  # noqa
-
     return feat_kats, feat_c24, feat_tsfel, feat_tsfresh
-
-
-if __name__ == '__main__':
-    KATS = _feat_from_kats([1, 2, 3, 4, 5])
-    dummybreakpoint = True
