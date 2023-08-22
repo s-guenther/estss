@@ -94,23 +94,23 @@
 93;57;tsfel;spectral_variation;freq_variation;TRUE;z_score;;should correlate with spectral_spread;Computes the amount of variation of the spectrum along time.;spectral tsfel.spectral_variation fs=1
 94;59;tsfel;total_energy;total_energy;TRUE;norm_maxabs;;redundant, scales with rms^2;Computes the total energy of the signal. rms squared;statistical tsfel.total_energy fs=1
 95;65;tsfel;zero_cross;cross_zero;TRUE;norm_maxabs;;;Computes Zero-crossing rate of the signal. number of zero crossings;temporal tsfel.zero_cross
-96;14;tsfresh;cid_ce(x, normalize)    ;cid;TRUE;norm_maxabs;;;This function calculator is an estimate for a time series complexity [1] (A more complex time series has more peaks, valleys etc.). complexity-invariant distance for time series;
-97;16;tsfresh;count_above_mean(x)     ;perc_above_mean;TRUE;_dont_care;abs_to_rel;;Returns the number of values in x that are higher than the mean of x;
-98;18;tsfresh;count_below_mean(x)     ;perc_below_mean;TRUE;_dont_care;abs_to_rel;;Returns the number of values in x that are lower than the mean of x;
-99;23;tsfresh;first_location_of_maximum(x)    ;loc_of_first_max;TRUE;_dont_care;;already normalized to abs_to_rel;Returns the first location of the maximum value of x.;
-100;24;tsfresh;first_location_of_minimum(x)    ;loc_of_first_min;TRUE;_dont_care;;already normalized to abs_to_rel;Returns the first location of the minimal value of x.;
-101;33;tsfresh;last_location_of_maximum(x)     ;loc_of_last_max;TRUE;_dont_care;;already normalized to abs_to_rel;Returns the relative last location of the maximum value of x.;
-102;34;tsfresh;last_location_of_minimum(x)     ;loc_of_last_min;TRUE;_dont_care;;already normalized to abs_to_rel;Returns the last location of the minimal value of x.;
-103;39;tsfresh;longest_strike_above_mean(x)    ;longest_strike_above_mean;TRUE;_dont_care;abs_to_rel;;Returns the length of the longest consecutive subsequence in x that is bigger than the mean of x;
-104;40;tsfresh;longest_strike_below_mean(x)    ;longest_strike_below_mean;TRUE;_dont_care;abs_to_rel;;Returns the length of the longest consecutive subsequence in x that is smaller than the mean of x;
-105;48;tsfresh;mean_second_derivative_central(x)   ;mean_2nd_diff;TRUE;_dont_care;;;Returns the mean value of a central approximation of the second derivative;
-106;64;tsfresh;sample_entropy(x)   ;entropy_sample;TRUE;_dont_care;;;Calculate and return sample entropy of x.;
-107;77;tsfresh;variation_coefficient(x)    ;variation_coeff;TRUE;norm_maxabs;;;Returns the variation coefficient (standard error / mean, give relative value of variation around mean) of x.;
-108;1;extra;average rectified value;arv;TRUE;norm_maxabs;;;average rectified value;
-109;2;extra;crest factor;crest;TRUE;norm_maxabs;;;max/rms;
-110;3;extra;shape factor;shape;TRUE;norm_maxabs;;;rms/arv;
-111;4;extra;impulse factor;impulse;TRUE;norm_maxabs;;;max/arv;
-112;5;extra;clearance factor;clearance;TRUE;norm_maxabs;;;max/(mean(sqrt(abs()))^2);
+96;14;tsfresh;cid_ce;cid;TRUE;norm_maxabs;;;This function calculator is an estimate for a time series complexity [1] (A more complex time series has more peaks, valleys etc.). complexity-invariant distance for time series;normalize=False
+97;16;tsfresh;count_above_mean;perc_above_mean;TRUE;_dont_care;abs_to_rel;;Returns the number of values in x that are higher than the mean of x;
+98;18;tsfresh;count_below_mean;perc_below_mean;TRUE;_dont_care;abs_to_rel;;Returns the number of values in x that are lower than the mean of x;
+99;23;tsfresh;first_location_of_maximum;loc_of_first_max;TRUE;_dont_care;;already normalized to abs_to_rel;Returns the first location of the maximum value of x.;
+100;24;tsfresh;first_location_of_minimum;loc_of_first_min;TRUE;_dont_care;;already normalized to abs_to_rel;Returns the first location of the minimal value of x.;
+101;33;tsfresh;last_location_of_maximum;loc_of_last_max;TRUE;_dont_care;;already normalized to abs_to_rel;Returns the relative last location of the maximum value of x.;
+102;34;tsfresh;last_location_of_minimum;loc_of_last_min;TRUE;_dont_care;;already normalized to abs_to_rel;Returns the last location of the minimal value of x.;
+103;39;tsfresh;longest_strike_above_mean;longest_strike_above_mean;TRUE;_dont_care;abs_to_rel;;Returns the length of the longest consecutive subsequence in x that is bigger than the mean of x;
+104;40;tsfresh;longest_strike_below_mean;longest_strike_below_mean;TRUE;_dont_care;abs_to_rel;;Returns the length of the longest consecutive subsequence in x that is smaller than the mean of x;
+105;48;tsfresh;mean_second_derivative_central;mean_2nd_diff;TRUE;_dont_care;;;Returns the mean value of a central approximation of the second derivative;
+106;64;tsfresh;sample_entropy;entropy_sample;TRUE;_dont_care;;;Calculate and return sample entropy of x.;
+107;77;tsfresh;variation_coefficient;variation_coeff;TRUE;norm_maxabs;;;Returns the variation coefficient (standard error / mean, give relative value of variation around mean) of x.;
+108;1;extra;average_rectified_value;arv;TRUE;norm_maxabs;;;average rectified value;
+109;2;extra;crest_factor;crest;TRUE;norm_maxabs;;;max/rms;
+110;3;extra;shape_factor;shape;TRUE;norm_maxabs;;;rms/arv;
+111;4;extra;impulse_factor;impulse;TRUE;norm_maxabs;;;max/arv;
+112;5;extra;clearance_factor;clearance;TRUE;norm_maxabs;;;max/(mean(sqrt(abs()))^2);
 0;10;kats;seas_acf1;;FALSE;;;not reasonable without period information;Autocorrelation coefficient at the first seasonal lag.;
 0;11;kats;seas_pacf1;;FALSE;;;not reasonable without period information;Patial Autocorrelation coefficient at the first seasonal lag.;
 0;15;kats;cusum_num;;FALSE;;;only bool output,  not exploitable;number of changepoints, cumulative sum changepoint detection;

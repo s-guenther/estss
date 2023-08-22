@@ -157,7 +157,7 @@ def _feat_from_kats(ts):
     # call feature calculation and transform output
     feat = model.transform(ts_kats)
     feat_df = pd.DataFrame(data=feat, index=[0])
-    _rectify_names(feat_df)
+    _rectify_names(feat_df, 'kats')
     return feat_df
 
 
@@ -196,7 +196,7 @@ def _feat_from_tsfel_subtab(ts, subtab):
     df_ts = pd.DataFrame(data=dict(ts=ts))
     feat_df = tsfel.time_series_features_extractor(cfg, df_ts)  # noqa
     _strip_0_in_colnames(feat_df)
-    _rectify_names(feat_df)
+    _rectify_names(feat_df, 'tsfel')
     return feat_df
 
 
@@ -248,8 +248,71 @@ def _strip_0_in_colnames(df):
 # ## Tsfresh
 # ##
 
-def _feat_from_tsfresh():
-    pass
+def _feat_from_tsfresh(ts):
+    """Invokes tsfresh feature calculation for the time series `ts` and returns
+       result as 1xf feature dataframe.
+       The function uses info of the module variable `_DF_FEAT`"""
+    # Implicit knowledge in this function
+    #   - there is no feature that needs z-scored data, only maxabs or dont
+    #     care
+    #   - Input `ts` is expected to be normed to max abs
+    df_ts = pd.DataFrame(data=dict(data=ts, id=[0]*len(ts)))
+    cfg = _parse_tsfresh_tab_to_dict(_get_tool_info_tab('tsfresh'))
+    feat_df = tsfresh.extract_features(df_ts,
+                                    default_fc_parameters=cfg,
+                                    column_id="id")
+    _strip_dunder_in_colnames(feat_df)
+    _rectify_names(feat_df, src='tsfresh')
+    return feat_df
+
+
+def _parse_tsfresh_tab_to_dict(tab):
+    """Uses the information of the table `tab` about the tsfresh vars and
+    parses them as a config dict that satisfies the cfg requirements of
+    tsfresh.
+    The `tab` has a column `parse_info` containing a string that encodes
+        [<para1>=<val1> <para2>=<val2> ...]
+    or is empty if no para is needed"""
+    names = list(tab.orig_name)
+    parse_info = list(tab.parse_info)
+    cfg = dict()
+    for n, pi in zip(names, parse_info):
+        # parse paras list, if existent, else return None
+        if isinstance(pi, float) and np.isnan(pi):
+            pdict = None
+        else:
+            # parse parse info `pi` string
+            paras = pi.split(' ')
+            pdict = {}
+            for p in paras:
+                k, v = p.split('=')
+                if v == 'True':
+                    pdict[k] = True
+                elif v == 'False':
+                    pdict[k] = False
+                else:
+                    pdict[k] = float(v)
+                pdict = [pdict]
+
+        # add feature to domain subdict
+        cfg[n] = pdict
+    return cfg
+
+
+def _strip_dunder_in_colnames(df):
+    """Column names in `df` that are returned by tsfel are prepended by
+    `*__` and trailed by '__*'. This is removed."""
+    colnames = df.columns.values
+    newnames = []
+    for n in colnames:
+        ind = n.find('__')
+        stripped = n[ind+2:]
+        ind = stripped.find('__')
+        if not ind == -1:
+            stripped = stripped[:ind]
+        newnames.append(stripped)
+    mapping = {old: new for old, new in zip(colnames, newnames)}
+    df.rename(columns=mapping, inplace=True)
 
 
 # ##
