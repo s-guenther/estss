@@ -259,8 +259,8 @@ def _feat_from_tsfresh(ts):
     df_ts = pd.DataFrame(data=dict(data=ts, id=[0]*len(ts)))
     cfg = _parse_tsfresh_tab_to_dict(_get_tool_info_tab('tsfresh'))
     feat_df = tsfresh.extract_features(df_ts,
-                                    default_fc_parameters=cfg,
-                                    column_id="id")
+                                       default_fc_parameters=cfg,
+                                       column_id="id")
     _strip_dunder_in_colnames(feat_df)
     _rectify_names(feat_df, src='tsfresh')
     return feat_df
@@ -319,8 +319,57 @@ def _strip_dunder_in_colnames(df):
 # ## Extra Features manually implemented
 # ##
 
-def _feat_from_extra():
-    pass
+def _feat_from_extra(ts):
+    """Calculates extra featues for the time series `ts` that are not
+    present in any of the above toolboxes and returns result as a 1xf
+    feature dataframe. The features are manually implemented below from
+    doi:10.3390/s150716225."""
+    feat_dict = {
+        'arv': _average_rectified_value(ts),
+        'crest': _crest(ts),
+        'shape': _shape(ts),
+        'impulse': _impulse(ts),
+        'clearance': _clearance(ts)
+    }
+    return pd.DataFrame(data=feat_dict, index=[0])
+
+
+def _crest(ts):
+    """determines the crest factor of the ts,
+    taken from doi:10.3390/s150716225"""
+    rms = np.sqrt(np.mean(ts**2))
+    crest = np.max(np.abs(ts))/rms
+    return crest
+
+
+def _shape(ts):
+    """calculates the shape factor of the data ,
+    taken from doi:10.3390/s150716225"""
+    rms = np.sqrt(np.mean(ts**2))
+    arv = np.mean(np.abs(ts))
+    shape = rms/arv
+    return shape
+
+
+def _impulse(ts):
+    """ determines the impusle factor of the ts ,
+    taken from doi:10.3390/s150716225"""
+    arv = _average_rectified_value(ts)
+    impulse = np.max(np.abs(ts))/arv
+    return impulse
+
+
+def _clearance(ts):
+    """calculates the clearance factor of the data,
+    taken from doi:10.3390/s150716225"""
+    clearance = np.max(np.abs(ts))/(np.mean(np.sqrt(np.abs(ts)))**2)
+    return clearance
+
+
+def _average_rectified_value(ts):
+    """calculates the arv factor of the data,
+    taken from doi:10.3390/s150716225"""
+    return float(np.mean(np.abs(ts)))
 
 
 # ##
