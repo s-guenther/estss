@@ -29,8 +29,9 @@ from estss import util
 # ##
 # ## ##########################################################################
 
-# Df has 10 columns:
-# ID IDtool orig_name rectified_name use norm_in norm_out comment description
+# Df has 11 columns:
+# ID IDtool orig_name rectified_name use norm_in norm_out comment
+# description parse_info
 try:
     _DF_FEAT = pd.read_csv('data/feat_tool.csv', delimiter=';')
 except FileNotFoundError:
@@ -77,7 +78,7 @@ def features(df_ts, **kwargs):
     pass
 
 
-def single_features(ts, **kwargs):
+def single_features(ts):
     """Calculate all relevant features for a single time series.
 
     Gets a (m,)-np.array() time series, m being the number of time steps and
@@ -86,26 +87,27 @@ def single_features(ts, **kwargs):
     `tsfresh` and `extra` to do so.
 
     Note that time series is expected to be normalized by
-    `util.normmaxabs()` and is eventually z-scored automatically for some
+    `util.norm_maxabs()` and is eventually z-scored automatically for some
     features.
 
     Parameters
     ----------
     ts : numpy.ndarray
         (m,)-numpy.array time series, m being the number of time steps
-    **kwargs : dicts
-        kwargs-dicts that are passed to the individual subroutines as
-        kwargs. The kwargs must be in ['catch22', 'kats', 'tsfel', 'tsfresh']
-        and the content of the dicts must be consistent with the
-        requirements of the individual subroutines
-        See _feat_from_* for individual information.
 
     Returns
     -------
     df_feat : pandas.dataframe
         1xf pandas feature dataframe, with f being the number of features
     """
-    pass
+    feat_dfs = [
+        _feat_from_catch22(ts),
+        _feat_from_kats(ts),
+        _feat_from_tsfel(ts),
+        _feat_from_tsfresh(ts),
+        _feat_from_extra(ts)
+    ]
+    return pd.concat(feat_dfs, axis=1)
 
 
 # ##
