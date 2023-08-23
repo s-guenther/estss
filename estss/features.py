@@ -267,6 +267,7 @@ def _feat_from_tsfresh(ts, show_progress=True):
     #   - there is no feature that needs z-scored data, only maxabs or dont
     #     care
     #   - Input `ts` is expected to be normed to max abs
+    #   - Some features have a norm_out function encoded in the _DF_FEAT table
     df_ts = pd.DataFrame(data=dict(data=ts, id=[0]*len(ts)))
     cfg = _parse_tsfresh_tab_to_dict(_get_tool_info_tab('tsfresh'))
     feat_df = tsfresh.extract_features(
@@ -277,6 +278,7 @@ def _feat_from_tsfresh(ts, show_progress=True):
     )
     _strip_dunder_in_colnames(feat_df)
     _rectify_names(feat_df, src='tsfresh')
+    _norm_outputs(feat_df, src='tsfresh', len_ts=len(ts))
     return feat_df
 
 
@@ -327,6 +329,17 @@ def _strip_dunder_in_colnames(df):
         newnames.append(stripped)
     mapping = {old: new for old, new in zip(colnames, newnames)}
     df.rename(columns=mapping, inplace=True)
+
+
+def _norm_outputs(df_feat, src=None, len_ts=1000):
+    """Norms some outputs specified in `tab` (loaded via `src`) from
+    absolute count to relative count. Inplace conversion.
+    Expects an 1xf dataframe `df_feat` as input.
+    Does properly only work for tsfresh without modification."""
+    tab = _get_tool_info_tab(src) if src else _DF_FEAT
+    mask = tab.norm_out.apply(lambda x: isinstance(x, str))
+    mult_mask = ~mask*1 + mask*1/len_ts
+    df_feat.loc[:, :] = df_feat.values * mult_mask.values
 
 
 # ##
