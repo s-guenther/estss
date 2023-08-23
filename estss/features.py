@@ -13,6 +13,8 @@ Relevant methods are:
     single_features()
 """
 
+import warnings
+
 import numpy as np
 import pandas as pd
 
@@ -43,7 +45,7 @@ except FileNotFoundError:
 # ##
 # ## ##########################################################################
 
-def features(df_ts, **kwargs):
+def features(df_ts, show_warnings='ignore', show_progress=False):
     """Calculate all relevant features for all time series of the pandas
     dataframe.
 
@@ -62,12 +64,6 @@ def features(df_ts, **kwargs):
     df_ts : pandas.dataframe
         mxn pandas time series dataframe, m being the number of time steps,
         n being the number of time series
-    **kwargs : dicts
-        kwargs-dicts that are passed to the individual subroutines as
-        kwargs. The kwargs must be in ['catch22', 'kats', 'tsfel', 'tsfresh']
-        and the content of the dicts must be consistent with the
-        requirements of the individual subroutines
-        See _feat_from_* for individual information.
 
     Returns
     -------
@@ -75,10 +71,15 @@ def features(df_ts, **kwargs):
         nxf pandas feature dataframe, with n being the number of time series
         and f being the number of features
     """
-    pass
+    with warnings.catch_warnings():
+        warnings.simplefilter(show_warnings)  # noqa
+        df_feat = df_ts.apply(
+            lambda ts: single_features(ts, show_progress).squeeze()
+        )
+    return df_feat.T
 
 
-def single_features(ts):
+def single_features(ts, show_progress=False):
     """Calculate all relevant features for a single time series.
 
     Gets a (m,)-np.array() time series, m being the number of time steps and
@@ -94,6 +95,8 @@ def single_features(ts):
     ----------
     ts : numpy.ndarray
         (m,)-numpy.array time series, m being the number of time steps
+    show_progress : bool, default: False
+        whether to show progress statusbars/info messages or not
 
     Returns
     -------
@@ -103,8 +106,8 @@ def single_features(ts):
     feat_dfs = [
         _feat_from_catch22(ts),
         _feat_from_kats(ts),
-        _feat_from_tsfel(ts),
-        _feat_from_tsfresh(ts),
+        _feat_from_tsfel(ts, show_progress),
+        _feat_from_tsfresh(ts, show_progress),
         _feat_from_extra(ts)
     ]
     return pd.concat(feat_dfs, axis=1)
@@ -167,7 +170,7 @@ def _feat_from_kats(ts):
 # ## Tsfel
 # ##
 
-def _feat_from_tsfel(ts):
+def _feat_from_tsfel(ts, show_progress=True):
     """Invokes tsfel feature calculation for the time series `ts` and returns
     result as 1xf feature dataframe.
     The function uses info of the module variable `_DF_FEAT`"""
@@ -179,24 +182,30 @@ def _feat_from_tsfel(ts):
     # call actual extraction routine for subtab with norm_in == norm_maxabs
     feat_df_maxabs = _feat_from_tsfel_subtab(
         ts,
-        feat_tab.query("norm_in == 'norm_maxabs' | norm_in == '_dont_care'")
+        feat_tab.query("norm_in == 'norm_maxabs' | norm_in == '_dont_care'"),
+        show_progress
     )
     # call actual extraction routine for subtab with norm_in == z_score
     feat_df_zscore = _feat_from_tsfel_subtab(
         util.norm_zscore(ts),
-        feat_tab.query("norm_in == 'z_score'")
+        feat_tab.query("norm_in == 'z_score'"),
+        show_progress
     )
     # merge both results
     return pd.concat([feat_df_maxabs, feat_df_zscore], axis=1)
 
 
-def _feat_from_tsfel_subtab(ts, subtab):
+def _feat_from_tsfel_subtab(ts, subtab, show_progress=True):
     """Actual invocation routine for tsfel. Calcs features for time series
     `ts` for the features defined in data frame `subtab`. `subtab` is expected
     to be extracted from tsfel-tab by `_feat_from_tsfel` superfunction"""
     cfg = _parse_tsfel_tab_to_dict(subtab)
     df_ts = pd.DataFrame(data=dict(ts=ts))
-    feat_df = tsfel.time_series_features_extractor(cfg, df_ts)  # noqa
+    feat_df = tsfel.time_series_features_extractor(
+        cfg,
+        df_ts,  # noqa
+        verbose=show_progress
+    )
     _strip_0_in_colnames(feat_df)
     _rectify_names(feat_df, 'tsfel')
     return feat_df
@@ -250,7 +259,7 @@ def _strip_0_in_colnames(df):
 # ## Tsfresh
 # ##
 
-def _feat_from_tsfresh(ts):
+def _feat_from_tsfresh(ts, show_progress=True):
     """Invokes tsfresh feature calculation for the time series `ts` and returns
        result as 1xf feature dataframe.
        The function uses info of the module variable `_DF_FEAT`"""
@@ -260,9 +269,12 @@ def _feat_from_tsfresh(ts):
     #   - Input `ts` is expected to be normed to max abs
     df_ts = pd.DataFrame(data=dict(data=ts, id=[0]*len(ts)))
     cfg = _parse_tsfresh_tab_to_dict(_get_tool_info_tab('tsfresh'))
-    feat_df = tsfresh.extract_features(df_ts,
-                                       default_fc_parameters=cfg,
-                                       column_id="id")
+    feat_df = tsfresh.extract_features(
+        df_ts,
+        default_fc_parameters=cfg,
+        column_id="id",
+        disable_progressbar=~show_progress
+    )
     _strip_dunder_in_colnames(feat_df)
     _rectify_names(feat_df, src='tsfresh')
     return feat_df
