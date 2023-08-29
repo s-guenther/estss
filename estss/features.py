@@ -64,6 +64,12 @@ def features(df_ts, show_warnings='ignore', show_progress=False):
     df_ts : pandas.dataframe
         mxn pandas time series dataframe, m being the number of time steps,
         n being the number of time series
+    show_warnings : str, default: 'ignore'
+        flag thats passed to  warnings.simplefilter within the warnings
+        context manager
+    show_progress : bool, default: False
+        flag thats passed to some individual toolboxes that handle if
+        progress bars or messages are printed
 
     Returns
     -------
