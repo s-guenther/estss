@@ -59,61 +59,6 @@ def _outlier_robust_sigmoid(feat_vec):
 # ## Dimensionality Reduction
 # ##
 
-def _hierarchical_corr_mat(df_feat, treshold=0.4, method='pearson'):
-    # based on https://wil.yegelwel.com/cluster-correlation-matrix/
-    # and https://www.kaggle.com/code/sgalella/correlation-heatmaps-with
-    # -hierarchical-clustering/notebook
-    corr_mat = df_feat.corr(method=method, numeric_only=True)
-    # TODO just for testing purposes, remove later
-    # sns.heatmap(np.abs(corr_mat),
-    #             vmin=0, vmax=1, cmap='Greys')
-    # plt.gca().axis('equal')
-
-    dissim = 1 - abs(corr_mat)
-    dissim[dissim < 0] = 0
-    link = linkage(squareform(dissim), 'complete', optimal_ordering=True)
-    link[link < 0] = 0
-
-    clust_labels = fcluster(link, 1 - treshold, criterion='distance')
-    idx = np.argsort(clust_labels)
-
-    corr_mat_sort = corr_mat.copy()
-    corr_mat_sort = corr_mat_sort.iloc[idx, :].T.iloc[idx, :]
-
-    # TODO just for testing purposes, remove later
-    # plt.figure()
-    # dendrogram(link, labels=df_feat.columns,
-    #            orientation='top', leaf_rotation=90)
-    # plt.figure()
-    sns.heatmap(
-        np.abs(corr_mat_sort),
-        vmin=0, vmax=1, cmap=_create_custom_cmap(treshold)
-    )
-    plt.gca().axis('equal')
-    plt.gca().set_title(f'Treshold = {treshold} '
-                        f'Cluster = {max(clust_labels)}')
-
-
-def _create_custom_cmap(treshold=0.5, c_gray='gray', c_col='plasma',
-                        n_values=20, cgap=0.2):
-    """Creates a custom colormap for intended fro hierarchical correlation
-    matrix that combines a greyscale colormap for values below treshold and
-    a colored colormap above treshold"""
-    # based on https://stackoverflow.com/questions/31051488/
-    nval1 = min(n_values - 1, max(int(treshold * n_values), 1))
-    nval2 = n_values - nval1
-    c1 = plt.cm.get_cmap(c_gray)(
-        np.linspace(1, 1 - cgap * treshold, nval1)
-    )
-    c2 = plt.cm.get_cmap(c_col)(
-        np.linspace(1 - (cgap + (1 - cgap) * treshold), 0, nval2)
-    )
-    colors = np.vstack([c1, c2])
-    mymap = mcolors.LinearSegmentedColormap.from_list(
-        'mymap', colors, N=n_values
-    )
-    return mymap
-
 
 def _modified_pearson(a, b):
     """Modified Pearson Correlation - does not only test linear, but also
@@ -124,6 +69,115 @@ def _modified_pearson(a, b):
     c.append(np.corrcoef(a, b**2)[0, 1])
     c.append(np.corrcoef(a, 1/(b+1e-10))[0, 1])
     return max(np.abs(c))
+
+
+def _hierarchical_corr_mat(df_feat, threshold=0.4, method=_modified_pearson,
+                           linkmethod='average', clust_crit='distance'):
+    # based on https://wil.yegelwel.com/cluster-correlation-matrix/
+    # and https://www.kaggle.com/code/sgalella/correlation-heatmaps-with
+    # -hierarchical-clustering/notebook
+    corr_mat = df_feat.corr(method=method, numeric_only=True)
+    dissim = 1 - abs(corr_mat)
+    dissim[dissim < 0] = 0
+    link = linkage(squareform(dissim), method=linkmethod,
+                   optimal_ordering=True)
+    link[link < 0] = 0
+    clust_labels = fcluster(link, 1 - threshold, criterion=clust_crit)
+    corr_mat_sort, clust_info = _sort_corr_mat(corr_mat, clust_labels)
+
+    # TODO just for testing purposes, remove later
+    # plt.figure()
+    # dendrogram(link, labels=df_feat.columns,
+    #            orientation='top', leaf_rotation=90)
+    # plt.figure()
+    sns.heatmap(
+        np.abs(corr_mat_sort),
+        vmin=0, vmax=1, cmap=_create_custom_cmap(threshold)
+    )
+    plt.gca().axis('equal')
+    plt.gca().set_title(f'Threshold = {threshold}, '
+                        f'N Cluster = {max(clust_labels)}, '
+                        f'Linkage Method = {linkmethod}, '
+                        f'Cluster Criterion = {clust_crit}')
+
+    return corr_mat_sort, clust_info
+
+def _plot_hierarchical_corr_mat(corr_mat, clust_info=None):
+    pass
+
+
+def _sort_corr_mat(mat, labels):
+    """Sorts a correlation matrix `mat` based on cluster labels `labels`.
+    Performs an outer-cluster sorting, where individual clusters are sorted
+    based on `labels` as well as an inner-cluster sorting, where features
+    are sorted in ascending order of outer-cluster correlation followed by
+    descending order of inner-cluster correlation.
+
+    Parameters
+    ----------
+    mat: pd.Dataframe
+        nxn dataframe containing the correlation matrix, index and columns
+        are labeled, where n is the number of features
+    labels: list or np.array()
+        (n,)-vector containing a cluster-label for each feature
+
+    Returns
+    -------
+    mat_sort: pd.Dataframe
+        nxn correlation matrix, clusters sorted
+    clust_info pd.Dataframe
+        nx3 dataframe containing the columns
+        'label', 'inner_corr', 'outer_corr"""
+    idx = np.argsort(labels)
+    mat_sort = mat.copy()
+    mat_sort = mat_sort.iloc[idx, :].T.iloc[idx, :]
+    mat_sort = (
+        mat_sort
+        .groupby(labels[idx])
+        .apply(
+            lambda gdf: gdf.assign(
+                outer_corr=lambda df: ((df.sum(axis=1) - df.sum()[df.index]) /
+                                       (df.shape[1] - df.shape[0])),
+                inner_corr=lambda df: df.mean()[df.index]
+            )
+            .sort_values('outer_corr', ascending=True)
+            .sort_values('inner_corr', ascending=False)
+        )
+        .droplevel(0)
+    )
+
+    clust_info = pd.DataFrame(
+        dict(label=labels[idx],
+             inner_corr=mat_sort['inner_corr'],
+             outer_corr=mat_sort['outer_corr']),
+        index=mat_sort.index
+    )
+
+    mat_sort = mat_sort.drop(columns=['outer_corr', 'inner_corr'])
+    mat_sort = mat_sort.loc[:, mat_sort.index]
+
+    return mat_sort, clust_info
+
+
+def _create_custom_cmap(threshold=0.4, c_gray='gray', c_col='hot',
+                        n_values=100, cgap=0.2):
+    """Creates a custom colormap intended for hierarchical correlation
+    matrix that combines a greyscale colormap for values below threshold and
+    a colored colormap above threshold"""
+    # based on https://stackoverflow.com/questions/31051488/
+    nval1 = min(n_values - 1, max(int(threshold * n_values), 1))
+    nval2 = n_values - nval1
+    c1 = plt.cm.get_cmap(c_gray)(
+        np.linspace(1, 1 - cgap * threshold, nval1)
+    )
+    c2 = plt.cm.get_cmap(c_col)(
+        np.linspace(1 - (cgap + (1 - cgap) * threshold), 0, nval2)
+    )
+    colors = np.vstack([c1, c2])
+    mymap = mcolors.LinearSegmentedColormap.from_list(
+        'mymap', colors, N=n_values
+    )
+    return mymap
 
 
 # ##
