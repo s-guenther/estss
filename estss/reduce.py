@@ -97,17 +97,9 @@ def _plot_hierarchical_corr_mat(corr_mat, info, selected_feat=None):
     # Get feature names of cluster representatives, either by taking the first
     # feature of each cluster or through selected_feat argument
     if selected_feat is None:
-        names = (
-            info['cluster']
-            .groupby('label')
-            .apply(
-                lambda df: pd.Series([df.index[0]] + [""] * (df.shape[0] - 1))
-            )
-        )
-        names = list(names)
-    else:
-        names = [s if s in selected_feat else ""
-                 for s in list(info['cluster'].index)]
+        selected_feat = _get_first_name_per_cluster(info['cluster'])
+    names = [s if s in selected_feat else ""
+             for s in list(info['cluster'].index)]
 
     # Make main plot
     fig, ax = plt.subplots()
@@ -117,13 +109,7 @@ def _plot_hierarchical_corr_mat(corr_mat, info, selected_feat=None):
         square=True, xticklabels=False, yticklabels=names
     )
 
-    # Add Title
-    ax.set_title(f'Threshold = {info["threshold"]}, '
-                 f'N Cluster = {max(info["cluster"].label)}, '
-                 f'Linkage Method = {info["linkmethod"]}, '
-                 f'Cluster Criterion = {info["clust_crit"]}')
-
-    # Make Cluster Rectangles
+    # Make Cluster Rectangles and highlight Cluster Representatives
     xlim = ax.get_xlim()
     ylim = ax.get_ylim()
     labels = info["cluster"].label.values
@@ -137,6 +123,26 @@ def _plot_hierarchical_corr_mat(corr_mat, info, selected_feat=None):
             continue
         ax.add_patch(_cluster_rect(start, start+1, total, xlim, ylim,
                                    facecolor='limegreen', edgecolor='none'))
+
+    # Add cluster inner/outer correlation info
+    idict = _cluster_info(info['cluster'], selected_feat)
+    iinfo = idict['inner_agg']
+    oinfo = idict['outer_agg']
+    infostring = (f'Number of Clusters:\n'
+                  f'   {max(info["cluster"].label)}\n'
+                  f'Avg. Inner-Cluster-Corr.:\n'
+                  f'   {iinfo["mean"]:.2f} $\pm$ {iinfo["std"]:.2f}\n'  # noqa
+                  f'Avg. Outer-Cluster-Corr.:\n'
+                  f'   {oinfo["mean"]:.2f} $\pm$ {oinfo["std"]:.2f}\n\n'
+                  f'Computation Info:\n'
+                  f'   Threshold: {info["threshold"]}\n'
+                  f'   Linkage Method: {info["linkmethod"]}\n'
+                  f'   Cluster Criterion: {info["clust_crit"]}')  # noqa
+    ax.text((xlim[1] - xlim[0])*1.0 + xlim[0],
+            (ylim[1] - ylim[0])*1.0 + ylim[0],
+            infostring,
+            bbox=dict(facecolor='white', alpha=0.9, edgecolor='black'),
+            va='top', ha='right', ma='left')
 
     return fig, ax
 
@@ -205,6 +211,34 @@ def _sort_corr_mat(mat, labels):
     mat_sort = mat_sort.loc[:, mat_sort.index]
 
     return mat_sort, clust_info
+
+
+def _get_first_name_per_cluster(df_info):
+    names = (df_info
+             .groupby('label')
+             .apply(lambda df: pd.Series([df.index[0]])))
+    return list(names[0].values)
+
+
+def _cluster_info(df_info, cnames=None):
+    if cnames is None:
+        cnames = _get_first_name_per_cluster(df_info)
+
+    inner = (df_info['inner_corr']
+             .groupby(df_info['label'])
+             .agg(['mean', 'std', 'min', 'max']))
+    inner.rename(dict(zip(inner.index.values, cnames)), inplace=True)
+    outer = (df_info['outer_corr']
+             .groupby(df_info['label'])
+             .agg(['mean', 'std', 'min', 'max']))
+    outer.rename(dict(zip(outer.index.values, cnames)), inplace=True)
+    inner_agg = (inner['mean']
+                 .agg(['mean', 'std', 'min', 'max']))
+    outer_agg = (outer['mean']
+                 .agg(['mean', 'std', 'min', 'max']))
+
+    return dict(inner=inner, outer=outer,
+                inner_agg=inner_agg, outer_agg=outer_agg)
 
 
 def _create_custom_cmap(threshold=0.4, c_gray='gray', c_col='plasma',
@@ -284,4 +318,5 @@ if __name__ == '__main__':
     FEAT = FEAT.loc[:, ~ISZERO]
     CORR_MAT, INFO = _hierarchical_corr_mat(FEAT)
     FIG, AX = _plot_hierarchical_corr_mat(CORR_MAT, INFO)
+    IDICT = _cluster_info(INFO['cluster'])
     dummybreakpoint = True
