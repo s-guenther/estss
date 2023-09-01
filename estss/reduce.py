@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
-import copy
 
 from matplotlib import pyplot as plt
 import matplotlib.colors as mcolors
+from matplotlib.patches import Rectangle
 import numpy as np
 import pandas as pd
 import seaborn as sns
 from scipy import stats
-from scipy.cluster.hierarchy import linkage, fcluster, dendrogram
+from scipy.cluster.hierarchy import linkage, fcluster
 from scipy.spatial.distance import squareform
 
 
@@ -51,8 +51,8 @@ def _outlier_robust_sigmoid(feat_vec):
     https://doi.org/10.1098/rsif.2013.0048 Suplementory Material 1 Eq. (2)."""
     med = np.median(feat_vec)
     iqr = stats.iqr(feat_vec)
-    inner_term = -(feat_vec - med)/(1.35 * iqr)
-    return 1/(1 + np.exp(inner_term))
+    inner_term = -(feat_vec - med) / (1.35 * iqr)
+    return 1 / (1 + np.exp(inner_term))
 
 
 # ##
@@ -66,8 +66,8 @@ def _modified_pearson(a, b):
     c = list()
     c.append(np.corrcoef(a, b)[0, 1])
     c.append(np.corrcoef(a, np.sqrt(b))[0, 1])
-    c.append(np.corrcoef(a, b**2)[0, 1])
-    c.append(np.corrcoef(a, 1/(b+1e-10))[0, 1])
+    c.append(np.corrcoef(a, b ** 2)[0, 1])
+    c.append(np.corrcoef(a, 1 / (b + 1e-10))[0, 1])
     return max(np.abs(c))
 
 
@@ -85,25 +85,73 @@ def _hierarchical_corr_mat(df_feat, threshold=0.4, method=_modified_pearson,
     clust_labels = fcluster(link, 1 - threshold, criterion=clust_crit)
     corr_mat_sort, clust_info = _sort_corr_mat(corr_mat, clust_labels)
 
-    # TODO just for testing purposes, remove later
-    # plt.figure()
-    # dendrogram(link, labels=df_feat.columns,
-    #            orientation='top', leaf_rotation=90)
-    # plt.figure()
+    info = dict(cluster=clust_info,
+                threshold=threshold,
+                linkmethod=linkmethod,
+                clust_crit=clust_crit)
+
+    return corr_mat_sort, info
+
+
+def _plot_hierarchical_corr_mat(corr_mat, info, selected_feat=None):
+    # Get feature names of cluster representatives, either by taking the first
+    # feature of each cluster or through selected_feat argument
+    if selected_feat is None:
+        names = (
+            info['cluster']
+            .groupby('label')
+            .apply(
+                lambda df: pd.Series([df.index[0]] + [""] * (df.shape[0] - 1))
+            )
+        )
+        names = list(names)
+    else:
+        names = [s if s in selected_feat else ""
+                 for s in list(info['cluster'].index)]
+
+    # Make main plot
+    fig, ax = plt.subplots()
     sns.heatmap(
-        np.abs(corr_mat_sort),
-        vmin=0, vmax=1, cmap=_create_custom_cmap(threshold)
+        np.abs(corr_mat),
+        vmin=0, vmax=1, cmap=_create_custom_cmap(info['threshold']), ax=ax,
+        square=True, xticklabels=False, yticklabels=names
     )
-    plt.gca().axis('equal')
-    plt.gca().set_title(f'Threshold = {threshold}, '
-                        f'N Cluster = {max(clust_labels)}, '
-                        f'Linkage Method = {linkmethod}, '
-                        f'Cluster Criterion = {clust_crit}')
 
-    return corr_mat_sort, clust_info
+    # Add Title
+    ax.set_title(f'Threshold = {info["threshold"]}, '
+                 f'N Cluster = {max(info["cluster"].label)}, '
+                 f'Linkage Method = {info["linkmethod"]}, '
+                 f'Cluster Criterion = {info["clust_crit"]}')
 
-def _plot_hierarchical_corr_mat(corr_mat, clust_info=None):
-    pass
+    # Make Cluster Rectangles
+    xlim = ax.get_xlim()
+    ylim = ax.get_ylim()
+    labels = info["cluster"].label.values
+    total = len(labels)
+    for ll in set(labels):
+        start = np.searchsorted(labels, ll)
+        stop = np.searchsorted(labels, ll, side='right')
+        ax.add_patch(_cluster_rect(start, stop, total, xlim, ylim))
+    for start, nn in enumerate(names):
+        if nn == "":
+            continue
+        ax.add_patch(_cluster_rect(start, start+1, total, xlim, ylim,
+                                   facecolor='limegreen', edgecolor='none'))
+
+    return fig, ax
+
+
+def _cluster_rect(start, end, total, xlim, ylim,
+                  edgecolor='limegreen', facecolor='none', linewidth=1.5):
+    xrange = xlim[1] - xlim[0]
+    yrange = ylim[1] - ylim[0]
+    srel = start / total
+    erel = end / total
+    xy = (xlim[0] + srel * xrange, ylim[1] - srel * yrange)
+    w = (erel - srel) * xrange
+    h = -(erel - srel) * yrange
+    return Rectangle(xy, w, h, edgecolor=edgecolor, facecolor=facecolor,
+                     linewidth=linewidth)
 
 
 def _sort_corr_mat(mat, labels):
@@ -159,7 +207,7 @@ def _sort_corr_mat(mat, labels):
     return mat_sort, clust_info
 
 
-def _create_custom_cmap(threshold=0.4, c_gray='gray', c_col='hot',
+def _create_custom_cmap(threshold=0.4, c_gray='gray', c_col='plasma',
                         n_values=100, cgap=0.2):
     """Creates a custom colormap intended for hierarchical correlation
     matrix that combines a greyscale colormap for values below threshold and
@@ -234,5 +282,6 @@ if __name__ == '__main__':
     FEAT = pd.read_pickle('../data/test_feat.pkl')
     ISZERO = FEAT.apply(lambda col: np.all(col == 0))
     FEAT = FEAT.loc[:, ~ISZERO]
-    _hierarchical_corr_mat(FEAT)
+    CORR_MAT, INFO = _hierarchical_corr_mat(FEAT)
+    FIG, AX = _plot_hierarchical_corr_mat(CORR_MAT, INFO)
     dummybreakpoint = True
