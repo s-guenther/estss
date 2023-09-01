@@ -56,7 +56,7 @@ def _outlier_robust_sigmoid(feat_vec):
 
 
 # ##
-# ## Dimensionality Reduction
+# ## Dimensionality Reduction / Clustering
 # ##
 
 
@@ -73,6 +73,19 @@ def _modified_pearson(a, b):
 
 def _hierarchical_corr_mat(df_feat, threshold=0.4, method=_modified_pearson,
                            linkmethod='average', clust_crit='distance'):
+    """Computes a hierarchical correlation matrix from feature array
+    `df_feat`. Features with a correlation above 'threshold' are clustered
+    together. Correlation is computed with `method` (default is a modified
+    pearson correlation, which also tests squared and 1/x correlation
+    besides linear). The linkage method for clustering is provided by
+    `linkmethod='average'` and the cluster criterion by
+    `clust_crit='distance'`.
+    Returns the clustered correlation matrix as dataframe as well as an
+    info dict with:
+      'cluster' - df that contains inner and outer correlations of clusters
+      'threshold', 'linkmethod', 'clustcrit' - Algorithm values set as
+          argument of the function
+     """
     # based on https://wil.yegelwel.com/cluster-correlation-matrix/
     # and https://www.kaggle.com/code/sgalella/correlation-heatmaps-with
     # -hierarchical-clustering/notebook
@@ -94,6 +107,13 @@ def _hierarchical_corr_mat(df_feat, threshold=0.4, method=_modified_pearson,
 
 
 def _plot_hierarchical_corr_mat(corr_mat, info, selected_feat=None):
+    """Plots the precomputed correlation matrix `corr_mat`. Additionally
+    frames found clusters, highlights cluster representatives and provides
+    info on inner and outer cluster correlation as well as algorithm
+    information. `info` is a dict returned by `_hierarchical_corr_mat()`.
+    `selected_features` is an optional argument that overrides the default
+    cluster representatives.
+    Returns fig, ax objects of the plot."""
     # Get feature names of cluster representatives, either by taking the first
     # feature of each cluster or through selected_feat argument
     if selected_feat is None:
@@ -148,7 +168,13 @@ def _plot_hierarchical_corr_mat(corr_mat, info, selected_feat=None):
 
 
 def _cluster_rect(start, end, total, xlim, ylim,
-                  edgecolor='limegreen', facecolor='none', linewidth=1.5):
+                  edgecolor='limegreen', facecolor='none', linewidth=1.5,
+                  **kwargs):
+    """Subfuncion of `_plot_hierarchical_corr_mat()`. Plots a rectangle
+    framing a cluster. `start` is the start feature number of a cluster,
+    `end` the end feature number of this cluster. `total` is the total
+    number of features. `xlim` and `ylim` provide the axes limits of the
+    axes to draw in. `**kwargs` are passed to `Rectangle` (matplotlib)"""
     xrange = xlim[1] - xlim[0]
     yrange = ylim[1] - ylim[0]
     srel = start / total
@@ -157,7 +183,7 @@ def _cluster_rect(start, end, total, xlim, ylim,
     w = (erel - srel) * xrange
     h = -(erel - srel) * yrange
     return Rectangle(xy, w, h, edgecolor=edgecolor, facecolor=facecolor,
-                     linewidth=linewidth)
+                     linewidth=linewidth, **kwargs)
 
 
 def _sort_corr_mat(mat, labels):
@@ -214,6 +240,9 @@ def _sort_corr_mat(mat, labels):
 
 
 def _get_first_name_per_cluster(df_info):
+    """Returns the first feature within every cluster (clustered are
+    expected to be sorted already). `df_info` contains the column `label`
+    and the index holds the feature names. Returned as list."""
     names = (df_info
              .groupby('label')
              .apply(lambda df: pd.Series([df.index[0]])))
@@ -221,6 +250,9 @@ def _get_first_name_per_cluster(df_info):
 
 
 def _cluster_info(df_info, cnames=None):
+    """Takes `df_info` with columns 'label', 'inner_corr' and 'outer_corr'
+    and computes statistics per cluster (encoded in 'label'). Returns as
+    dict."""
     if cnames is None:
         cnames = _get_first_name_per_cluster(df_info)
 
