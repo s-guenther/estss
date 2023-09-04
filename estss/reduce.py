@@ -327,10 +327,10 @@ def _prepare_test_case():
     print(f'Loading time series files (~4GB) ...', end=' ')
     start = timer()
     ts_neg, ts_posneg = expand.get_expanded_ts(
-        # ('../data/exp_ts_only_neg.pkl', '../data/exp_ts_only_posneg.pkl')
+        ('../data/exp_ts_only_neg.pkl', '../data/exp_ts_only_posneg.pkl')
     )
-    ts_neg = ts_neg.iloc[:, :500]
-    ts_posneg = ts_posneg.iloc[:, :500]
+    ts_neg = ts_neg.iloc[:, :100]
+    ts_posneg = ts_posneg.iloc[:, :100]
     print(f'finished in {timer() - start:.2f}s')
 
     print(f'Calculating features for '
@@ -344,11 +344,15 @@ def _prepare_test_case():
     return feat_neg, feat_posneg
 
 
-if __name__ == '__main__':
-    FEAT = pd.read_pickle('../data/test_feat.pkl')
-    ISZERO = FEAT.apply(lambda col: np.all(col == 0))
-    FEAT = FEAT.loc[:, ~ISZERO]
-    CORR_MAT, INFO = _hierarchical_corr_mat(FEAT)
-    FIG, AX = _plot_hierarchical_corr_mat(CORR_MAT, INFO)
-    IDICT = _cluster_info(INFO['cluster'])
+def _test_hier_corr():
+    feat = pd.read_pickle('../data/test_feat.pkl')
+    iszero = feat.apply(lambda col: np.all(col == 0))
+    feat = feat.loc[:, ~iszero]
+    corr_mat, info = _hierarchical_corr_mat(feat)
+    fig, ax = _plot_hierarchical_corr_mat(corr_mat, info)
+    idict = _cluster_info(info['cluster'])
     dummybreakpoint = True
+
+
+if __name__ == '__main__':
+    F1, F2 = _prepare_test_case()
