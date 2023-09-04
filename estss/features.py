@@ -204,6 +204,7 @@ def _feat_from_tsfel_subtab(ts, subtab, show_progress=True):
     feat_df = tsfel.time_series_features_extractor(
         cfg,
         df_ts,  # noqa
+        fs=1000,
         verbose=show_progress
     )
     _strip_0_in_colnames(feat_df)
