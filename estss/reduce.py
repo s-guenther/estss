@@ -394,6 +394,16 @@ def _create_custom_cmap(threshold=0.4, c_gray='gray', c_col='plasma',
     return mymap
 
 
+def _plot_corr_mat_scatter(df_feat, samples=200):
+    """Plots the correlation matrix of `df_feat` as a scatterplot,
+    where each dim is plotted against each other in a matrix, the diagonal
+    shows the histogram of each dimension."""
+    pg = sns.PairGrid(df_feat.sample(samples))
+    pg.map_upper(sns.scatterplot, s=5)
+    pg.map_lower(sns.scatterplot, s=5)
+    pg.map_diag(sns.histplot, bins=20)
+    return pg
+
 # ##
 # ## Reduction
 # ##
