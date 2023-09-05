@@ -17,6 +17,41 @@ from scipy.spatial.distance import squareform
 # ##
 # ## ##########################################################################
 
+# ##
+# ## Dimensionality Reduction
+# ##
+
+_REPRESENTATIVES = (
+    'temporal_centroid',
+    'mean_of_signed_diff',
+    'loc_of_last_max',      # lower outer correlation than loc_of_first_max
+    'rs_range',
+    'dfa',
+    'rcp_num',
+    'acf_first_zero',
+    'median_of_abs_diff',
+    'freq_mean',
+    'stretch_decreasing',
+    'stl_seasonality_strength',
+    'mean',
+    'iqr',                  # simpler measure than mean_diff_from_mean
+    'share_above_mean',     # lower outer correlation than share_below_mean
+                            #   and simpler than binarize_mean
+    'mode5',
+    'mean_2nd_diff',
+    'trev'
+)
+
+
+def dimensional_reduced_feature_space(df_feat, choose_dim=_REPRESENTATIVES):
+    fspace = _raw_feature_array_to_feature_space(df_feat)
+    corr_mat, cinfo = _hierarchical_corr_mat(fspace)
+    _plot_hierarchical_corr_mat(corr_mat, cinfo, selected_feat=choose_dim)
+    fspace = fspace[list(choose_dim)]
+    corr_mat2, cinfo2 = _hierarchical_corr_mat(fspace, threshold=0.05)
+    _plot_hierarchical_corr_mat(corr_mat2, cinfo2)
+    return fspace, cinfo
+
 
 # ##
 # ## Reduce
@@ -38,7 +73,7 @@ from scipy.spatial.distance import squareform
 # ## Feature Space Normalization
 # ##
 
-def raw_feature_array_to_feature_space(df_feat):
+def _raw_feature_array_to_feature_space(df_feat):
     """Transforms a raw feature space to a normalized one. `df_feat` is a
     mxn pandas dataframe where m is the number of points and n the number of
     dimensions. Normalization performed per dimension. Normalized array is
@@ -378,46 +413,3 @@ def _create_custom_cmap(threshold=0.4, c_gray='gray', c_col='plasma',
 # ##
 # ## Equilize ND hist
 # ##
-
-
-# ##
-# ## Temporary Tests
-# ##
-# ## ##########################################################################
-
-def _prepare_test_case():
-    from timeit import default_timer as timer
-    from estss import expand, features
-
-    print(f'Loading time series files (~4GB) ...', end=' ')
-    start = timer()
-    ts_neg, ts_posneg = expand.get_expanded_ts(
-        #  ('../data/exp_ts_only_neg.pkl', '../data/exp_ts_only_posneg.pkl')
-    )
-    ts_neg = ts_neg.sample(1000, axis='columns')
-    ts_posneg = ts_posneg.sample(1000, axis='columns')
-    print(f'finished in {timer() - start:.2f}s')
-
-    print(f'Calculating features for '
-          f'{len(ts_neg.columns) + len(ts_posneg.columns)} '
-          f'time series ...', end=' ')
-    start = timer()
-    feat_neg = features.features(ts_neg)
-    feat_posneg = features.features(ts_posneg)
-    print(f'finished in {timer() - start:.2f}s')
-
-    return feat_neg, feat_posneg
-
-
-def _test_hier_corr():
-    feat = pd.read_pickle('../data/test_feat.pkl')
-    iszero = feat.apply(lambda col: np.all(col == 0))
-    feat = feat.loc[:, ~iszero]
-    corr_mat, info = _hierarchical_corr_mat(feat)
-    fig, ax = _plot_hierarchical_corr_mat(corr_mat, info)
-    idict = _cluster_info(info['cluster'])
-    dummybreakpoint = True
-
-
-if __name__ == '__main__':
-    F1, F2 = _prepare_test_case()
