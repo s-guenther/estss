@@ -21,6 +21,10 @@ from scipy.spatial.distance import squareform
 # ## Dimensionality Reduction
 # ##
 
+# Manually selected cluster representatives. If no inline comment it is the
+# automatically selected cluster representative (maximum inner correlation
+# with other features). If inline comment, it deviates from the
+# automatically determined one and the reason is described.
 _REPRESENTATIVES = (
     'temporal_centroid',
     'mean_of_signed_diff',
