@@ -47,14 +47,16 @@ _REPRESENTATIVES = (
 )
 
 
-def dimensional_reduced_feature_space(df_feat, choose_dim=_REPRESENTATIVES):
+def dimensional_reduced_feature_space(df_feat, choose_dim=_REPRESENTATIVES,
+                                      plot=True):
     fspace = _raw_feature_array_to_feature_space(df_feat)
     corr_mat, cinfo = _hierarchical_corr_mat(fspace)
-    _plot_hierarchical_corr_mat(corr_mat, cinfo, selected_feat=choose_dim)
-    fspace = fspace[list(choose_dim)]
-    corr_mat2, cinfo2 = _hierarchical_corr_mat(fspace, threshold=0.05)
-    _plot_hierarchical_corr_mat(corr_mat2, cinfo2)
-    return fspace, cinfo
+    fspace2 = fspace[list(choose_dim)]
+    if plot:
+        _plot_hierarchical_corr_mat(corr_mat, cinfo, selected_feat=choose_dim)
+        corr_mat2, cinfo2 = _hierarchical_corr_mat(fspace2, threshold=0.5)
+        _plot_hierarchical_corr_mat(corr_mat2, cinfo2)
+    return fspace2, cinfo
 
 
 # ##
