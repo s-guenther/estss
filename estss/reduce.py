@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import copy
 
 from matplotlib import pyplot as plt
 import matplotlib.colors as mcolors
@@ -37,12 +38,52 @@ from scipy.spatial.distance import squareform
 # ## Feature Space Normalization
 # ##
 
-def _normalize_feature_space(df_feat):
+def raw_feature_array_to_feature_space(df_feat):
     """Transforms a raw feature space to a normalized one. `df_feat` is a
     mxn pandas dataframe where m is the number of points and n the number of
     dimensions. Normalization performed per dimension. Normalized array is
     again a dataframe with same dimensions and row/col index."""
-    return df_feat.apply(_outlier_robust_sigmoid, raw=True)
+    fspace = _prune_feature_space(df_feat)
+    fspace = (
+        fspace
+        .apply(_outlier_robust_sigmoid, raw=True)
+        .apply(_curtail_at_whiskers, raw=True)
+        .apply(_norm_min_max, raw=True)
+    )
+    return fspace
+
+
+# Variable _FEATURES_TO_EXCLUDE:
+# Features that are excluded in `_prune_feature_space()`. Only excluded for
+# dimensionality reduction and calculation of the reduced time series sets.
+# For the final analysis, they are available again. They are removed because
+# they are ill-defined in the sense that they are very skewed making it a
+# hard dimension do equilize in the reduction algorithm, or clash with
+# the time series definition (maxabs=1), or are discrete and not continuous,
+# which is viable in general but needs special care which is omitted for
+# simplicity.
+# Further features that are kept, but may prove to get excluded as well
+# because they are quite skewed, too: trev, ami_timescale, rs_range, dfa,
+# linearity, stl_spikiness, bocp_conf_max, mean_2nd_diff
+_FEATURES_TO_EXCLUDE = (
+    'stl_peak',               # discrete dimension
+    'stl_trough',             # discrete dimension
+    'min',                    # ill-defined
+    'max',                    # ill-defined
+    'median_of_signed_diff',  # ill-defined
+    'peak2peak',              # ill-defined
+    'cross_zero',             # ill-defined
+    'fund_freq',              # discrete dimension
+    'freq_roll_on'            # discrete dimension
+)
+
+
+def _prune_feature_space(df_feat, to_exclude=_FEATURES_TO_EXCLUDE):
+    """Removes the columns defined in `to_exclude` from the
+    features dataframe `df_feat`. Default excluded features are defined in
+    `_FEATURES_TO_EXCLUDE` and are only excluded for dimensionality
+    reduction, but are present in the final analysis"""
+    return df_feat.drop(list(to_exclude), axis='columns')
 
 
 def _outlier_robust_sigmoid(feat_vec):
@@ -51,8 +92,32 @@ def _outlier_robust_sigmoid(feat_vec):
     https://doi.org/10.1098/rsif.2013.0048 Suplementory Material 1 Eq. (2)."""
     med = np.median(feat_vec)
     iqr = stats.iqr(feat_vec)
-    inner_term = -(feat_vec - med) / (1.35 * iqr)
+    inner_term = -(feat_vec - med) / (1.35 * iqr + 1e-12)
     return 1 / (1 + np.exp(inner_term))
+
+
+def _curtail_at_whiskers(feat_vec):
+    """Calculates the whiskers of a vector `feat_vec` and curtails all
+    outliers above or below the whiskers to the whiskers value. Whiskers
+    follow the conventional boxplot definition, which is that they end at a
+    data point within 1.5*inter-quartile-range. For more
+    details, see e.g. https://en.wikipedia.org/wiki/Box_plot"""
+    low_quart = np.percentile(feat_vec, 25)
+    up_quart = np.percentile(feat_vec, 75)
+    iqr = up_quart - low_quart
+    low_whisk = np.min(feat_vec[feat_vec >= (low_quart - 1.5*iqr)])
+    up_whisk = np.max(feat_vec[feat_vec <= (up_quart + 1.5*iqr)])
+    vec = copy.copy(feat_vec)
+    vec[vec < low_whisk] = low_whisk
+    vec[vec > up_whisk] = up_whisk
+    return vec
+
+
+def _norm_min_max(feat_vec):
+    """Normalizes a vector `feat_vec` to the range of [0, 1]"""
+    feat_vec -= np.min(feat_vec)
+    feat_vec /= np.max(feat_vec)
+    return feat_vec
 
 
 # ##
@@ -327,10 +392,10 @@ def _prepare_test_case():
     print(f'Loading time series files (~4GB) ...', end=' ')
     start = timer()
     ts_neg, ts_posneg = expand.get_expanded_ts(
-        ('../data/exp_ts_only_neg.pkl', '../data/exp_ts_only_posneg.pkl')
+        #  ('../data/exp_ts_only_neg.pkl', '../data/exp_ts_only_posneg.pkl')
     )
-    ts_neg = ts_neg.iloc[:, :100]
-    ts_posneg = ts_posneg.iloc[:, :100]
+    ts_neg = ts_neg.sample(1000, axis='columns')
+    ts_posneg = ts_posneg.sample(1000, axis='columns')
     print(f'finished in {timer() - start:.2f}s')
 
     print(f'Calculating features for '
