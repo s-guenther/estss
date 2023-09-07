@@ -468,7 +468,7 @@ def _find_nearest(large, small, distance=2.0, rm_outliers=True,
     `leafsize` is a parameter of the kd-tree search. `workers` defines how
     many workers are used for parallel processing"""
     if leafsize is None:
-        leafsize = max(min(large.shape[0] / 100, 50), 10)
+        leafsize = _default_leafsize(large.shape[0])
     tree = KDTree(large, leafsize=leafsize)
     qpoints = [small[i, :] for i in range(small.shape[0])]
     dist, ind = tree.query(qpoints, p=distance, workers=workers)
@@ -477,6 +477,11 @@ def _find_nearest(large, small, distance=2.0, rm_outliers=True,
     if rm_duplicates:
         ind = _rm_duplicates(ind)
     return large.iloc[ind, :]
+
+
+def _default_leafsize(arraysize):
+    """Determines kd-tree leafsize based on the size of the array."""
+    return max(min(arraysize / 100, 50), 10)
 
 
 def _rm_pts_outside_volume(dist, ind):
@@ -528,6 +533,69 @@ def _random_add_rm(df_large, df_small, n):
 # ##
 # ## Remove Closest
 # ##
+
+def _remove_closest(df_feat, n_final, distance=2.0, leafsize=None):
+    """Removes points within the dataframe `df_feat` until only `n_final`
+    are left. Points are successively removed by removing the closest ones
+    to each other. `distance` is the distance metric, `leafsize` an internal
+    parameter for kd-tree generation"""
+    if leafsize is None:
+        leafsize = _default_leafsize(df_feat.shape[0])
+
+    n_feat = df_feat.shape[0]
+    n_rm = (n_feat - n_final)
+    n_find = n_rm + 2
+
+    # convert to float to be able to replace values with nan
+    ids = np.arange(df_feat.shape[0], dtype=float)
+
+    tree = KDTree(df_feat, leafsize=leafsize)
+    distances, indexes = tree.query(df_feat, k=n_find, p=distance)
+    distances, indexes = distances[:, 1:], indexes[:, 1:]
+    for _ in range(n_rm):
+        # The algorithm removes rows and replaces values within the
+        # distances and indexes array with NaN. At a certain point,
+        # the algorithm will fail if it tries to evaluate a NaN value
+        rm_ind = _closest_ind(distances, indexes)
+        _remove_index_inplace(distances, indexes, ids, rm_ind)
+
+    ids = ids[~np.isnan(ids)]
+    # Convert back to integer
+    ids = ids.astype('int')
+
+    return df_feat.iloc[ids, :]
+
+
+def _closest_ind(distances, indexes):
+    """Subfunction of `_remove_closest()`
+    Find nearest pair specified in the `distances` array and remove the point
+    that is closer in general to the others, others is defined by the second
+    closest point to each. The index of the closest point within the pair is
+    extracted from `indexes`."""
+    coord_p1 = np.unravel_index(np.argmin(distances), indexes.shape)
+    ind_p1 = coord_p1[0]
+    ind_p2 = indexes[coord_p1]
+    d_p1 = np.partition(distances[ind_p1, :], 1)[1]
+    d_p2 = np.partition(distances[ind_p2, :], 1)[1]
+    if d_p1 < d_p2:
+        return ind_p1
+    elif d_p1 > d_p2:
+        return ind_p2
+    else:
+        raise ValueError(f'There are two points with index {ind_p1} and '
+                         f'{ind_p2} that have the same distance to another '
+                         f'point')
+    # NOTE does not work anymore if rows are removed afterwards. Either do
+    #  not remove rows or keep them but set to inf or similar
+
+
+def _remove_index_inplace(distances, indexes, ids, rm_ind):
+    """Subfunction of `_remove_closest()`.
+    Remove point row specified by `rm_ind` from 'distances', 'indexes',
+    and 'ids' by setting to nan or to inf"""
+    ids[rm_ind] = np.nan
+    distances[rm_ind, :] = np.inf
+    distances[indexes == rm_ind] = np.inf
 
 
 # ##
