@@ -10,6 +10,8 @@ import seaborn as sns
 from scipy import stats
 from scipy.cluster.hierarchy import linkage, fcluster
 from scipy.spatial.distance import squareform
+from scipy.spatial import KDTree
+from scipy.stats import qmc
 
 
 # ##
@@ -60,7 +62,7 @@ def dimensional_reduced_feature_space(df_feat, choose_dim=_REPRESENTATIVES,
 
 
 # ##
-# ## Reduce
+# ## Reduce Chain
 # ##
 
 
@@ -410,15 +412,117 @@ def _plot_corr_mat_scatter(df_feat, samples=200):
     pg.map_diag(sns.histplot, bins=20)
     return pg
 
+
 # ##
 # ## Reduction
 # ##
 # ## ##########################################################################
 
-
 # ##
 # ## Map to Uniform
 # ##
+
+def _map_to_uniform(df_feat, n,
+                    distance=2.0, seed=1001, n_tries=3, overrelax=1.05):
+    """Will select `n` points from `df_feat` that are roughly uniformely
+    distributed within the volume of `df_feat` by generating a
+    quasi-random halten sequence and mapping this sequence to the nearest
+    points of df_feat. `distance` is the distance metric (manhattan=1,
+    euclidean=2, ...). `n_tries` and `overrelax` are parameters of the query
+    algorithm."""
+    n_dim = df_feat.shape[1]
+    n_query = int(n*overrelax)
+    # The loop queries successively more points than neccessary as fewer points
+    # will be found due to duplications and outside-volume-points
+    for _ in range(max(n_tries, 1)):
+        uni_set = _uniform_set(n_query, n_dim, seed)
+        df_sub = _find_nearest(df_feat, uni_set, distance)
+        n_found = df_sub.shape[0]
+        n_query = int(n_query + (n - n_found)*overrelax)
+        if n_found >= n:
+            break
+    # In the end, the exact number of queried points will be enforced by
+    # random insertion/deletion
+    df_sub = _random_add_rm(df_feat, df_sub, n)  # noqa
+    return df_sub
+
+
+def _uniform_set(n, dim, seed=None):
+    """Creates a uniformely distributed random set of `n` points,
+    each having the dimension `dim` returned as an nxdim array. Each
+    dimension will be in the range of [0, 1] (note that the data is within
+    the range and not scaled to it, i.e. the bounds are probably not hit as
+    the points are randomly generated within the bounds."""
+    halton = qmc.Halton(d=dim, seed=seed)
+    return halton.random(n)
+
+
+def _find_nearest(large, small, distance=2.0, rm_outliers=True,
+                  rm_duplicates=True, leafsize=None, workers=-1):
+    """For each point in `small`, finds the nearest point in the
+    dataframe `large`.
+    If `rm_outliers=True` removes matches of points in `small` that are far
+    away (it is interpreted that these are outside the search space volume
+    that will map to the surface of the search space volume. If
+    `rm_duplicates=True`, it will remove multiple matched points.
+    `leafsize` is a parameter of the kd-tree search. `workers` defines how
+    many workers are used for parallel processing"""
+    if leafsize is None:
+        leafsize = max(min(large.shape[0] / 100, 50), 10)
+    tree = KDTree(large, leafsize=leafsize)
+    qpoints = [small[i, :] for i in range(small.shape[0])]
+    dist, ind = tree.query(qpoints, p=distance, workers=workers)
+    if rm_outliers:
+        ind = _rm_pts_outside_volume(dist, ind)
+    if rm_duplicates:
+        ind = _rm_duplicates(ind)
+    return large.iloc[ind, :]
+
+
+def _rm_pts_outside_volume(dist, ind):
+    """Looks at the distances `dist` of the queried points `ind`. Looks for
+    the most common distances and interpretes distances greater than that as
+    points outside the point volume/outliers. These get removed and anly the
+    points within the point volume are returned."""
+    # TODO refactor, questionable calculation method
+    hist, edges = np.histogram(dist, bins=int(len(dist)/2))
+    hist[hist <= 2] = 0
+    binstep = edges[1] - edges[0]
+    binvals = edges[:-1] + binstep
+    fakedist = []
+    for n_in_bin, bval in zip(hist, binvals):
+        fakedist += [bval]*n_in_bin
+    fakedist = np.array(fakedist)
+    maxbnd = np.percentile(fakedist, 75)
+    return ind[dist <= 1.2*maxbnd]
+
+
+def _rm_duplicates(indexlist):
+    """If indices occur multiple times in `indexlist`, they will be unique
+    in the end."""
+    return list(set(indexlist))
+
+
+def _random_add_rm(df_large, df_small, n):
+    """Creates a dataframe with `n` rows based on the dataframe `df_small`.
+    If `df_small` has more elements, the excess elements will be removed,
+    if it has fewer elements, random elements from `df_large` will be added."""
+    n_small = df_small.shape[0]
+    if n_small == n:
+        return df_small
+    elif n_small > n:
+        return df_small.sample(n, axis='rows')
+    elif n_small < n:
+        n_diff = n - n_small
+        diff_index = np.setdiff1d(df_large.index, df_small.index)
+        df_diff = df_large.loc[diff_index, :]
+        df_enlarged = pd.concat(
+            [df_small, df_diff.sample(n_diff, axis='rows')],
+            axis='rows'
+        )
+        return df_enlarged
+    else:
+        raise RuntimeError('If-...-else reached presumably impossible path')
 
 
 # ##
@@ -429,3 +533,19 @@ def _plot_corr_mat_scatter(df_feat, samples=200):
 # ##
 # ## Equilize ND hist
 # ##
+
+
+# ##
+# ## Temporary Tests
+# ##
+# ## ##########################################################################
+
+def _test_map_to_uniform():
+    df_feat = pd.read_pickle('../data/test_feat.pkl')
+    df_feat, cinfo = dimensional_reduced_feature_space(df_feat, plot=False)
+    df_feat_uni = _map_to_uniform(df_feat, 500)
+    return df_feat_uni
+
+
+if __name__ == '__main__':
+    _test_map_to_uniform()
