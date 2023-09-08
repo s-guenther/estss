@@ -13,7 +13,9 @@ Relevant methods are:
     single_features()
 """
 
+from functools import partial
 import warnings
+from multiprocessing import Pool
 
 import numpy as np
 import pandas as pd
@@ -45,7 +47,7 @@ except FileNotFoundError:
 # ##
 # ## ##########################################################################
 
-def features(df_ts, show_warnings='ignore', show_progress=False):
+def features(df_ts, workers=8, show_warnings='ignore', show_progress=False):
     """Calculate all relevant features for all time series of the pandas
     dataframe.
 
@@ -64,12 +66,15 @@ def features(df_ts, show_warnings='ignore', show_progress=False):
     df_ts : pandas.dataframe
         mxn pandas time series dataframe, m being the number of time steps,
         n being the number of time series
+    workers : int, default: 8
+        How many workers to use for multiprocessing
     show_warnings : str, default: 'ignore'
         flag thats passed to  warnings.simplefilter within the warnings
         context manager
     show_progress : bool, default: False
         flag thats passed to some individual toolboxes that handle if
         progress bars or messages are printed
+
 
     Returns
     -------
@@ -79,10 +84,25 @@ def features(df_ts, show_warnings='ignore', show_progress=False):
     """
     with warnings.catch_warnings():
         warnings.simplefilter(show_warnings)  # noqa
-        df_feat = df_ts.apply(
-            lambda ts: single_features(ts, show_progress).squeeze()
-        )
+        # The below multiprocessing implementation equals the following
+        # single process implementation:
+        # df_feat = df_ts.apply(lambda ts: single_features(ts, show_progress))
+        n_splits = max(workers, int(df_ts.shape[1]/2048))
+        dfs = np.array_split(df_ts, n_splits, axis=1)
+        with Pool(processes=workers) as pool:
+            res = pool.map(
+                partial(_df_features, show_progress=show_progress),
+                dfs,
+                chunksize=1
+            )
+        df_feat = pd.concat(res, axis=1)
     return df_feat.T
+
+
+def _df_features(df, show_progress=False):
+    """Helper Function for multiprocessing in `features()` map function to
+    avoid the introduction of lambdas (not pickleable)"""
+    return df.apply(single_features, args=(show_progress,))
 
 
 def single_features(ts, show_progress=False):
@@ -116,7 +136,7 @@ def single_features(ts, show_progress=False):
         _feat_from_tsfresh(ts, show_progress),
         _feat_from_extra(ts)
     ]
-    return pd.concat(feat_dfs, axis=1)
+    return pd.concat(feat_dfs, axis=1).squeeze()
 
 
 # ##
@@ -281,7 +301,8 @@ def _feat_from_tsfresh(ts, show_progress=True):
         df_ts,
         default_fc_parameters=cfg,
         column_id="id",
-        disable_progressbar=~show_progress
+        disable_progressbar=~show_progress,
+        n_jobs=0
     )
     _strip_dunder_in_colnames(feat_df)
     _rectify_names(feat_df, src='tsfresh')
