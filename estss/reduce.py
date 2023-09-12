@@ -681,6 +681,16 @@ def _largest_n(array, n, maintain_order=True):
 
 def _fill_sparse(df_feat, df_pool, bins=10, n_add=3, n_tries=20,
                  n_smallest=5, seed=None):
+    """Takes the feature dataframe `df_feat` and Computes the nd-hist-array
+    with `bins` bins. Locates the `n_smallest` sparsest bins within this array.
+    Randomly adds `n_add` elements within a randomly chosen bin of
+    `n_smallest`. Tries `n_tries` variants of random insertions and chooses the
+    one that returns the best overall heterogeneity of the whole set.
+    `seed` initializes the random generator. The points are taken from the
+    dataframe `df_pool`.
+    Note that `df_feat` and `df_pool` are expected to be normalized in [0,
+    1] in each dimension.
+    Returns a copy of the input dataframe with `n_add` elements inserted."""
     if seed is not None:
         np.random.seed(seed)
 
