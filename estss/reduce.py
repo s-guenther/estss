@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import copy
+from warnings import warn
 
 from matplotlib import pyplot as plt
 import matplotlib.colors as mcolors
@@ -29,21 +30,21 @@ from scipy.stats import qmc
 # automatically determined one and the reason is described.
 _REPRESENTATIVES = (
     'temporal_centroid',
-    'mean_of_signed_diff',
-    'loc_of_last_max',      # lower outer correlation than loc_of_first_max
-    'rs_range',
+    # 'mean_of_signed_diff',  # excluded, high corr with temporal_centroid
+    'loc_of_last_max',        # lower outer correlation than loc_of_first_max
     'dfa',
+    'rs_range',
+    'mode5',
+    'share_above_mean',
+    'iqr',                    # simpler measure than mean_diff_from_mean
+    'mean',
     'rcp_num',
+    # 'transition_variance',  # excluded, high corr with acf_first_zero
     'acf_first_zero',
     'median_of_abs_diff',
     'freq_mean',
-    'stretch_decreasing',
-    'stl_seasonality_strength',
-    'mean',
-    'iqr',                  # simpler measure than mean_diff_from_mean
-    'share_above_mean',     # lower outer correlation than share_below_mean
-                            #   and simpler than binarize_mean
-    'mode5',
+    # 'stretch_decreasing',        # excluded, high corr with freq_mean
+    # 'stl_seasonality_strength',  # excluded, high corr with freq_mean
     'mean_2nd_diff',
     'trev'
 )
@@ -53,6 +54,8 @@ def dimensional_reduced_feature_space(df_feat, choose_dim=_REPRESENTATIVES,
                                       plot=True):
     fspace = _raw_feature_array_to_feature_space(df_feat)
     corr_mat, cinfo = _hierarchical_corr_mat(fspace)
+    if choose_dim is None:
+        choose_dim = _get_first_name_per_cluster(cinfo['cluster'])
     fspace2 = fspace[list(choose_dim)]
     if plot:
         _plot_hierarchical_corr_mat(corr_mat, cinfo, selected_feat=choose_dim)
@@ -582,9 +585,10 @@ def _closest_ind(distances, indexes):
     elif d_p1 > d_p2:
         return ind_p2
     else:
-        raise ValueError(f'There are two points with index {ind_p1} and '
-                         f'{ind_p2} that have the same distance to another '
-                         f'point')
+        warn(f'There are two points with index {ind_p1} and '
+             f'{ind_p2} that have the same distance to another '
+             f'point. Choosing {ind_p1}')
+        return ind_p1
     # NOTE does not work anymore if rows are removed afterwards. Either do
     #  not remove rows or keep them but set to inf or similar
 
@@ -601,6 +605,187 @@ def _remove_index_inplace(distances, indexes, ids, rm_ind):
 # ##
 # ## Equilize ND hist
 # ##
+
+# ## Empty dense
+
+def _empty_dense(df_feat, bins=10, n_rm=3, n_tries=20, n_largest=3, seed=None):
+    """Takes the feature dataframe `df_feat` and Computes the nd-hist-array
+    with `bins` bins. Locates the `n_largest`densest bins within this array.
+    Randomly removes `n_rm` elements within a randomly chosen bin of
+    `n_largest`. Tries `n_tries` variants of random removals and chooses the
+    one that returns the best overall heterogeneity of the whole set.
+    `seed` initializes the random generator.
+    Note that `df_feat` is expected to be normalized in [0, 1] in each
+    dimension.
+    Returns a copy of the input dataframe with `n_rm` elements removed."""
+    if seed is not None:
+        np.random.seed(seed)
+
+    # find n densest bins, randomly choose one with propability based on
+    #   how dense it is
+    hist = _nd_hist(df_feat, bins)
+    edges = np.linspace(0, 1, bins+1)
+    idxs, vals = _largest_n(hist.to_numpy(), n_largest)
+    vals += - 1/bins
+    vals[vals < 0] = 0
+    i_idxs = np.random.choice(range(len(vals)), p=vals/np.sum(vals))
+    # for that bin: determine feature and bounds
+    feat_id, edge_id = idxs[i_idxs, :]
+    bnds = edges[edge_id], edges[edge_id+1]
+
+    # search in df_feat for all time series that are within bounds in feature
+    tf_array = ((df_feat.iloc[:, feat_id] >= bnds[0]) &
+                (df_feat.iloc[:, feat_id] <= bnds[1]))
+    df_candidates = df_feat.loc[tf_array, :]
+
+    # randomly choose n_rm signals n_tries times
+    rm_indexes = [df_candidates.sample(n_rm).index for _ in range(n_tries)]
+    # build n_tries new df_feat_rm
+    df_rm_list = [df_feat.drop(rm_idxs) for rm_idxs in rm_indexes]
+    # evaluate heterogenity for each df_feat_rm
+    het = [_heterogeneity(df_feat_rm, bins=bins) for df_feat_rm in df_rm_list]
+    # choose best one, return
+    return df_rm_list[np.argmin(het)]
+
+
+def _smallest_n(array, n, maintain_order=True):
+    """Determines the `indexes` and `values` of the `n` smallest elements
+    within the numpy array `array`.
+    taken from https://stackoverflow.com/questions/45689933"""
+    idx = np.argpartition(array.ravel(), n)[:n]
+    if maintain_order:
+        idx = idx[array.ravel()[idx].argsort()]
+    idx = np.stack(np.unravel_index(idx, array.shape)).T
+    vals = np.array([array[tuple(idx[i, :])] for i in range(idx.shape[0])])
+    return idx, vals
+
+
+def _largest_n(array, n, maintain_order=True):
+    """Determines the `indexes` and `values` of the `n` largest elements
+    within the numpy array `array`."""
+    idx, vals = _smallest_n(-array, n, maintain_order)
+    return idx, -vals
+
+
+def _nd_hist(df_feat, bins=10):
+    """Creates a multidimensional histogram information similar to a
+    heatmap. Input is a number of points as nxm array, where n is number of
+    points and m is dimension of point. The input is provided as a pandas
+    dataframe `df_feat`. Each dimension m is expected to be labeled as a
+    feature (columns have names). Returns an m x `bins` array, where m is again
+    the dimension and `bins` is the number of bins. Each row represents a
+    histogram for one dimension.
+
+    Parameters
+    ----------
+    df_feat: pandas.DataFrame
+        See numpy.histogram(), nxm, n=number of points, m=number of
+        features/dimensions
+    bins : int, optional, default: 10
+        See numpy.histogram(), number of bins of each histogram
+
+    Returns
+    -------
+    df_hist : pandas.DataFrame
+        m x bins, m=number of features/dimension, bins=number of bins
+    """
+    dim = df_feat.shape[1]
+    histarray = np.zeros((dim, bins))
+    for ii in range(dim):
+        histarray[ii, :], _ = \
+            np.histogram(df_feat.iloc[:, ii], bins, [0, 1])
+    sums = np.ones((dim, 1)) * df_feat.shape[0]
+    histarray /= sums
+    df_hist = pd.DataFrame(data=histarray,
+                           index=df_feat.columns,
+                           columns=np.linspace(1/bins, 1, bins))
+    return df_hist
+
+
+def _heterogeneity(df_feat, bins=10, as_histarray=False):
+    """Computes the heterogeneity of dataset `df_feat` The heterogeneity is
+    an indirect measure for the discrepancy/uniformity of a set. `df_feat`
+    is a mxn feature dataframe with m being the number of points and n being
+    the number of features/dimensions of that point. The feature array is
+    expected to be normed in [0, 1] per dimension. The heterogeneity is
+    calculated by summing up the squared deviations from an uniformely
+    distributed histogram with `bins` bins. `as_histarray` is an optional
+    argument, if True, the first argument `df_feat` is treated as an
+    nd-hist-array instead of an normalized feature array. If false,
+    the nd-hist-array will be computed from the feature array.
+    If an `histarray` is provied, it must be normed (sum along 1-axis must be
+    one).
+    Returns a scalar. """
+    if as_histarray:
+        histarray = df_feat
+    else:
+        histarray = _nd_hist(df_feat, bins)
+
+    dims, bins = histarray.shape
+    max_per_dim = np.sqrt((1 - 1 / bins) ** 2 + 1 / bins ** 2 * (bins - 1))
+    average = 1 / bins
+    deviation = histarray - average
+    # deviation[deviation > 0] = 0   # only penalize bins that are too empty
+    return np.sum((np.sum(deviation ** 2, axis=1))**(1/2)) / dims / max_per_dim
+
+
+def _plot_nd_hist(df_feat, ax=None, bins=10, title='', colorbar=False,
+                  xticks=False, ndigits=3, as_histarray=False):
+    """Plots a multidimensional nd-hist. See `_nd_hist()` for more
+    information. `ax` optionally specifies the axis object where to plot the
+    nd-hist. `bins=10` determines the number of bins of each histogram,
+    `colorbar=False` specifies if an additional colorbar shall be plotted.
+    `ndigits=3` determines how many digits will be shown in each bin and as
+    a label of how many percent of the points are within this bin. If
+    `as_histarray=True`, the first input `df_feat` is treated as a histarray
+    dataframe (see `_nd_hist()`) instead of a feature array dataframe.
+    `title` labels additionally the nd-histogram plot in the lower left
+    corner."""
+    if as_histarray:
+        histarray = df_feat
+    else:
+        histarray = _nd_hist(df_feat, bins)
+
+    dim, bins = histarray.shape
+    names = histarray.index
+
+    if ax is None:
+        fig, ax = plt.subplots()
+    else:
+        fig = ax.get_figure()
+
+    mappable = ax.matshow(histarray, aspect='auto', vmin=0, vmax=2 / bins,
+                          cmap='Greys')
+    # Add colorbar if option is set
+    if colorbar:
+        fig.colorbar(mappable, ax=ax)
+    # Loop over data dimensions and create text annotations.
+    for ii in range(dim):
+        for jj in range(bins):
+            color = 'k' if histarray.iloc[ii, jj] < 0.1 else 'w'
+            ax.text(jj, ii, f'{histarray.iloc[ii, jj]:.{ndigits}f}',
+                    ha="center", va="center", color=color, clip_on=True)
+    # rewrite x,y ticks
+    ax.set_yticks(range(dim),
+                  labels=names)
+    if xticks:
+        ax.set_xticks(np.arange(bins + 1) - 0.5,
+                      labels=[f'{x:.2f}' for x in np.linspace(0, 1, bins + 1)])
+    else:
+        ax.set_xticks([])
+    # Add title
+    tstring = (f'{title}, Heterogenity = '
+               f'{_heterogeneity(histarray, as_histarray=True)}').strip(', ')
+    ax.set_title(tstring, {'va': 'top'}, loc='left', y=-0.07)
+    # Add secondary y axis with range labels on it
+    # make grid to separate each row
+    for _, spine in ax.spines.items():
+        spine.set_visible(False)
+    ax.set_yticks(np.arange(histarray.shape[0] + 1) - .5, minor=True)
+    ax.grid(which="minor", color="w", axis='y', linestyle='-', linewidth=3)
+    ax.tick_params(which="minor", bottom=False, left=False)
+    ax.tick_params(which="major", bottom=False, left=True)
+    return fig, ax
 
 
 # ##
