@@ -21,6 +21,41 @@ from scipy.stats import qmc
 # ## ##########################################################################
 
 # ##
+# ## Reduce Chain
+# ##
+
+def reduce_chain(feat_only_neg, feat_only_posneg, seed=123456):
+    pass
+
+
+# ##
+# ## Reduce Single
+# ##
+
+def reduce_single(df_feat, n,
+                  seed=None, kws_map=None, kws_rm=None, kws_equi=None):
+    if seed is not None:
+        np.random.seed(seed)
+    if kws_map is None:
+        kws_map = dict()
+    if kws_rm is None:
+        kws_rm = dict()
+    if kws_equi is None:
+        kws_equi = dict()
+
+    print(f'\n    Map to uniform ...', end=' ')
+    df_red = _map_to_uniform(df_feat, int(n*1.2), seed=None, **kws_map)  # noqa
+    print(f'done')
+    print(f'    Remove closest ...', end='')
+    df_red = _remove_closest(df_red, n, **kws_rm)
+    print(f'done')
+    print(f'    Equilize nd-hist ...', end='')
+    df_red = _equilize_nd_hist(df_red, df_feat, seed=None, **kws_equi)
+    print(f'done')
+    return df_red
+
+
+# ##
 # ## Dimensionality Reduction
 # ##
 
@@ -65,20 +100,9 @@ def dimensional_reduced_feature_space(df_feat, choose_dim=_REPRESENTATIVES,
 
 
 # ##
-# ## Reduce Chain
-# ##
-
-
-# ##
-# ## Reduce To
-# ##
-
-
-# ##
 # ## Preprocessing
 # ##
 # ## ##########################################################################
-
 
 # ##
 # ## Feature Space Normalization
@@ -415,14 +439,14 @@ def _create_custom_cmap(threshold=0.4, c_gray='gray', c_col='plasma',
     return mymap
 
 
-def _plot_corr_mat_scatter(df_feat, samples=200):
+def _plot_corr_mat_scatter(df_feat, samples=200, bins=20):
     """Plots the correlation matrix of `df_feat` as a scatterplot,
     where each dim is plotted against each other in a matrix, the diagonal
     shows the histogram of each dimension."""
     pg = sns.PairGrid(df_feat.sample(samples))
     pg.map_upper(sns.scatterplot, s=5)
     pg.map_lower(sns.scatterplot, s=5)
-    pg.map_diag(sns.histplot, bins=20)
+    pg.map_diag(sns.histplot, bins=bins)
     return pg
 
 
@@ -650,7 +674,7 @@ def _equilize_nd_hist(df_feat, df_pool, bins=10, n_addrm=5, n_tries=20,
     info = []
     for i in range(n_max_loops):
         # Show calculation progress by printing loop number
-        if (i % 10) == 0:
+        if (i % 100) == 0:
             print(f'Run {i+1}/{n_max_loops}')
 
         # Call fill/empty functions
@@ -957,19 +981,3 @@ def _plot_nd_hist(df_feat, ax=None, bins=10, title='', colorbar=False,
     ax.tick_params(which="minor", bottom=False, left=False)
     ax.tick_params(which="major", bottom=False, left=True)
     return fig, ax
-
-
-# ##
-# ## Temporary Tests
-# ##
-# ## ##########################################################################
-
-def _test_map_to_uniform():
-    df_feat = pd.read_pickle('../data/test_feat.pkl')
-    df_feat, cinfo = dimensional_reduced_feature_space(df_feat, plot=False)
-    df_feat_uni = _map_to_uniform(df_feat, 500)
-    return df_feat_uni
-
-
-if __name__ == '__main__':
-    _test_map_to_uniform()
