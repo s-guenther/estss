@@ -616,9 +616,104 @@ def _remove_index_inplace(distances, indexes, ids, rm_ind):
 # ## Equilize ND hist
 # ##
 
+# ## Equilize nd hist
+
+def _equilize_nd_hist(df_feat, df_pool, bins=10, n_addrm=5, n_tries=20,
+                      n_max_loops=5000, max_attempts_fail=10, seed=None,
+                      return_info=False):
+    """Takes the feature dataframe `df_feat` and Computes the nd-hist-array
+    with `bins` bins. Consecutively adds and removes elements with
+    `_fill_sparse()` and `_remove_empty()` to improve the heterogeneity of
+    the set. For more info, see these functions.
+    `df_feat` is the original feature dataframe to improve and `df_pool` is
+    the extended feature dataframe from which points can be taken. If
+    `return_info=True', the function returns a tuple (df_feat_improved,
+    df_info) instead of only returning the feature dataframe. `seed`
+    initializes the random generator.
+    Hyperparameters passed to the subroutines:
+    - `bins` defines the number of bins of the nd hist
+    - 'n_addrm' how many points to add/ to remove
+    - 'n_tries' how many sampled variants are calculated by the subroutines
+    Hyperparameters of the outer optimization algorithm:
+    - `n_max_loops` how many maximum tries until results are returned if
+      premature termination is not hit before
+    - `max_attempts_fail´ how many failed attempts are made to improve the
+      heterogeneity before adjusting the initial hyperparameters `n_tries`
+      and `n_addrm`
+    """
+    if seed is not None:
+        np.random.seed(seed)
+
+    # run empyt dense/fill sparse function n_loops times
+    df_before = copy.copy(df_feat)
+    failed_attempts = 0
+    info = []
+    for i in range(n_max_loops):
+        # Show calculation progress by printing loop number
+        if (i % 10) == 0:
+            print(f'Run {i+1}/{n_max_loops}')
+
+        # Call fill/empty functions
+        df_add = _fill_sparse(
+            df_before, df_pool,
+            bins=bins, n_add=n_addrm, n_tries=n_tries, seed=None
+        )
+        n_rm = df_add.shape[0] - df_before.shape[0]
+        df_rm = _empty_dense(
+            df_add,
+            bins=bins, n_rm=n_rm, n_tries=n_tries, seed=None
+        )
+        df_after = df_rm
+
+        # Evaluate Quality/results of operation
+        het_before = _heterogeneity(df_before, bins=bins)
+        het_add = _heterogeneity(df_add, bins=bins)
+        het_rm = _heterogeneity(df_rm, bins=bins)
+        het_after = het_rm
+
+        # update loop var
+        if het_after < het_before:
+            df_before = df_after
+            failed_attempts = 0
+        else:
+            df_before = df_before
+            failed_attempts += 1
+
+        # Update hyperparameter if failed attempts is too high
+        if failed_attempts >= max_attempts_fail:
+            n_addrm -= 1
+            n_tries = int(1.5*n_tries)
+            failed_attempts = 0
+            warn(f'Reached maximum of failed attempts ('
+                 f'{max_attempts_fail}). Tuning hyperparameters to n_addrm '
+                 f'= {n_addrm} and n_tries = {n_tries} and continue')
+
+        # Gather state information and progress of algorithm
+        info.append([i, failed_attempts, n_addrm, n_tries,
+                     het_before, het_rm, het_add, het_after])
+
+        # Break loop and algorithm if hyperparameter tuning gets
+        # ill-conditioned (n_addrm < 1)
+        if n_addrm < 1:
+            break
+
+    # Convert Info list to dataframe
+    info = pd.DataFrame(
+        np.array(info),
+        columns=['Run', 'Failed Attempts', 'n_addrm', 'n_tries',
+                 'het_before', 'het_rm', 'het_add', 'het_after'])
+
+    # Write Output
+    df_final = df_before
+    if return_info:
+        return df_final, info
+    else:
+        return df_final
+
+
 # ## Empty dense
 
-def _empty_dense(df_feat, bins=10, n_rm=3, n_tries=20, n_largest=3, seed=None):
+def _empty_dense(df_feat, bins=10, n_rm=3, n_tries=20, n_largest=5, seed=None):
     """Takes the feature dataframe `df_feat` and Computes the nd-hist-array
     with `bins` bins. Locates the `n_largest`densest bins within this array.
     Randomly removes `n_rm` elements within a randomly chosen bin of
@@ -630,6 +725,8 @@ def _empty_dense(df_feat, bins=10, n_rm=3, n_tries=20, n_largest=3, seed=None):
     Returns a copy of the input dataframe with `n_rm` elements removed."""
     if seed is not None:
         np.random.seed(seed)
+    if n_rm == 0:
+        return df_feat
 
     # find n densest bins, randomly choose one with propability based on
     #   how dense it is
@@ -680,7 +777,7 @@ def _largest_n(array, n, maintain_order=True):
 # ## Fill Sparse
 
 def _fill_sparse(df_feat, df_pool, bins=10, n_add=3, n_tries=20,
-                 n_smallest=5, seed=None):
+                 n_smallest=8, seed=None):
     """Takes the feature dataframe `df_feat` and Computes the nd-hist-array
     with `bins` bins. Locates the `n_smallest` sparsest bins within this array.
     Randomly adds `n_add` elements within a randomly chosen bin of
@@ -693,6 +790,9 @@ def _fill_sparse(df_feat, df_pool, bins=10, n_add=3, n_tries=20,
     Returns a copy of the input dataframe with `n_add` elements inserted."""
     if seed is not None:
         np.random.seed(seed)
+
+    if n_add == 0:
+        return df_feat
 
     # find n emptiest bins, randomly choose one with propability based on
     #   how emtpy it is
@@ -842,8 +942,11 @@ def _plot_nd_hist(df_feat, ax=None, bins=10, title='', colorbar=False,
     else:
         ax.set_xticks([])
     # Add title
-    tstring = (f'{title}, Heterogenity = '
-               f'{_heterogeneity(histarray, as_histarray=True)}').strip(', ')
+    tstring = (
+        (f'{title}, Heterogenity = '
+         f'{_heterogeneity(histarray, as_histarray=True):.4f}')
+        .strip(', ')
+    )
     ax.set_title(tstring, {'va': 'top'}, loc='left', y=-0.07)
     # Add secondary y axis with range labels on it
     # make grid to separate each row
