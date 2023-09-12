@@ -96,6 +96,7 @@ def _raw_feature_array_to_feature_space(df_feat):
         .apply(_curtail_at_whiskers, raw=True)
         .apply(_norm_min_max, raw=True)
     )
+    fspace = _manually_repair_dfa(fspace)
     return fspace
 
 
@@ -164,6 +165,15 @@ def _norm_min_max(feat_vec):
     feat_vec -= np.min(feat_vec)
     feat_vec /= np.max(feat_vec)
     return feat_vec
+
+
+def _manually_repair_dfa(fspace):
+    """The normed expanded set contains only two elements with dfa < 0.1.
+    These are removed and the dfa vector normed again as this bin would
+    otherwise be unreasonably empty for the equilize_nd_hist algorithm."""
+    fspace_mut = fspace.loc[fspace['dfa'] >= 0.1, :]
+    fspace_mut.loc[:, 'dfa'] = _norm_min_max(fspace_mut['dfa'])
+    return fspace_mut
 
 
 # ##
@@ -665,6 +675,54 @@ def _largest_n(array, n, maintain_order=True):
     within the numpy array `array`."""
     idx, vals = _smallest_n(-array, n, maintain_order)
     return idx, -vals
+
+
+# ## Fill Sparse
+
+def _fill_sparse(df_feat, df_pool, bins=10, n_add=3, n_tries=20,
+                 n_smallest=5, seed=None):
+    if seed is not None:
+        np.random.seed(seed)
+
+    # find n emptiest bins, randomly choose one with propability based on
+    #   how emtpy it is
+    hist = _nd_hist(df_feat, bins)
+    edges = np.linspace(0, 1, bins+1)
+    idxs, vals = _smallest_n(hist.to_numpy(), n_smallest)
+    vals = max(vals) - vals
+    vals += 1/bins
+    i_idxs = np.random.choice(range(len(vals)), p=vals/np.sum(vals))
+    # for that bin: determine feature and bounds
+    feat_id, edge_id = idxs[i_idxs, :]
+    bounds = edges[edge_id], edges[edge_id+1]
+
+    # remove the search df_feat from the df_pool reference
+    df_pool_cleaned = df_pool.drop(index=df_feat.index)
+    # search in df_pool_cleaned for all time series that are within bounds in
+    #   feature
+    tf_array = df_pool_cleaned[df_feat.columns[feat_id]].between(*bounds)
+    add_pool = df_pool_cleaned.loc[tf_array, :]
+
+    if (n_pool := add_pool.shape[0]) < n_add:
+        warn(f'Only {n_pool} points available to add for chosen bin, instead'
+             f'of {n_add}, returning original input instead.')
+        return df_feat
+
+    # randomly choose n_add signals n_tries times
+    add_samples = [add_pool.sample(n_add) for _ in range(n_tries)]
+    # build n_tries new df_char_add
+    df_add_list = [pd.concat([df_feat, add_s]) for add_s in add_samples]
+
+    # evaluate heterogenity for each df_char_new
+    het = [_heterogeneity(dfadd) for dfadd in df_add_list]
+
+    # choose best one, return
+    return df_add_list[np.argmin(het)]
+
+
+# ##
+# ## Methods to determine nd-hist and heterogeneity
+# ##
 
 
 def _nd_hist(df_feat, bins=10):
