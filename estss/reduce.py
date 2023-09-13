@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 import copy
+import pickle
+import random
 from warnings import warn
 
 from matplotlib import pyplot as plt
@@ -14,18 +16,88 @@ from scipy.spatial.distance import squareform
 from scipy.spatial import KDTree
 from scipy.stats import qmc
 
+from estss import expand, features, util
+
 
 # ##
 # ## Top Level
 # ##
 # ## ##########################################################################
 
+def get_reduced_sets(file='data/reduced_sets.pkl'):
+    with open(file, 'rb') as f:
+        data = pickle.load(f)
+    return data
+
+
+def compute_reduced_sets(df_feat_list=None, df_ts_list=None, seed=1337):
+    if seed is not None:
+        np.random.seed(seed)
+        random.seed(seed)
+
+    print('# ##\n# ## Load and Prepare Data\n# ##')
+    print('##############################################################')
+    if df_feat_list is None:
+        df_feat_list = features.get_features()
+    if df_ts_list is None:
+        df_ts_list = expand.get_expanded_ts()
+    df_feat_list = [util.read_df_if_string(df) for df in df_feat_list]
+    df_ts_list = [util.read_df_if_string(df) for df in df_ts_list]
+
+    # reindex second feat and ts dataframe with an offset of +1e6 to be able
+    # to differentiate between only_neg/only_posneg in a merged dataframe
+    feat_posneg = df_feat_list[1]
+    feat_posneg.index += int(1e6)
+    df_feat_list[1] = feat_posneg
+    ts_posneg = df_ts_list[1]
+    ts_posneg.index += int(1e6)
+    df_ts_list[1] = ts_posneg
+
+    # merge and normalize combined feature array
+    df_feat_merged = pd.concat(df_feat_list, axis=0, ignore_index=False)
+    df_feat_norm, cinfo = dimensional_reduced_feature_space(
+        df_feat_merged, plot=False
+    )
+
+    # split and normalize with minmax again
+    df_feat_neg_norm = _norm_min_max(
+        df_feat_norm.loc[df_feat_norm.index < 1e6, :]
+    )
+    df_feat_posneg_norm = _norm_min_max(
+        df_feat_norm.loc[df_feat_norm.index >= 1e6, :]
+    )
+
+    # call reduce chain on normalized feature arrays
+    print('\n# ##\n# ## Reduce Only Neg Set\n# ##')
+    print('##############################################################')
+    red_set_neg = reduce_chain(df_feat_neg_norm)
+    print('\n# ##\n# ## Reduce Only PosNeg Set\n# ##')
+    print('##############################################################')
+    red_set_posneg = reduce_chain(df_feat_posneg_norm)
+
+    return red_set_neg, red_set_posneg
+
+
 # ##
 # ## Reduce Chain
 # ##
 
-def reduce_chain(feat_only_neg, feat_only_posneg, seed=123456):
-    pass
+def reduce_chain(df_feat_norm, set_sizes=(2048, 512, 128, 32), seed=None):
+    if seed is not None:
+        np.random.seed(seed)
+        random.seed(seed)
+
+    # Loop through set_sizes to compute sets
+    large_set = df_feat_norm
+    sets = []
+    for n in set_sizes:
+        print(f'\n# ## Compute n = {n} Set\n################################')
+        small_set = reduce_single(large_set, n, seed)
+        sets.append(small_set)
+        large_set = small_set
+
+    # print('\nSort Sets\n################################')
+    return sets
 
 
 # ##
@@ -43,15 +115,15 @@ def reduce_single(df_feat, n,
     if kws_equi is None:
         kws_equi = dict()
 
-    print(f'\n    Map to uniform ...', end=' ')
-    df_red = _map_to_uniform(df_feat, int(n*1.2), seed=None, **kws_map)  # noqa
+    print(f'# ## Map to uniform ...', end=' ')
+    df_red = _map_to_uniform(df_feat, int(n*1.2), seed=None, **kws_map)
     print(f'done')
-    print(f'    Remove closest ...', end='')
+    print(f'# ## Remove closest ...', end=' ')
     df_red = _remove_closest(df_red, n, **kws_rm)
     print(f'done')
-    print(f'    Equilize nd-hist ...', end='')
+    print(f'# ## Equilize nd-hist ...')
     df_red = _equilize_nd_hist(df_red, df_feat, seed=None, **kws_equi)
-    print(f'done')
+    print(f'... done')
     return df_red
 
 
@@ -460,7 +532,7 @@ def _plot_corr_mat_scatter(df_feat, samples=200, bins=20):
 # ##
 
 def _map_to_uniform(df_feat, n,
-                    distance=2.0, seed=1001, n_tries=3, overrelax=1.05):
+                    distance=2.0, n_tries=3, overrelax=1.05, seed=None):
     """Will select `n` points from `df_feat` that are roughly uniformely
     distributed within the volume of `df_feat` by generating a
     quasi-random halten sequence and mapping this sequence to the nearest
@@ -643,7 +715,7 @@ def _remove_index_inplace(distances, indexes, ids, rm_ind):
 # ## Equilize nd hist
 
 def _equilize_nd_hist(df_feat, df_pool, bins=10, n_addrm=5, n_tries=20,
-                      n_max_loops=5000, max_attempts_fail=10, seed=None,
+                      n_max_loops=300, max_attempts_fail=10, seed=None,
                       return_info=False):
     """Takes the feature dataframe `df_feat` and Computes the nd-hist-array
     with `bins` bins. Consecutively adds and removes elements with
@@ -672,6 +744,7 @@ def _equilize_nd_hist(df_feat, df_pool, bins=10, n_addrm=5, n_tries=20,
     df_before = copy.copy(df_feat)
     failed_attempts = 0
     info = []
+    fill_errors = 0
     for i in range(n_max_loops):
         # Show calculation progress by printing loop number
         if (i % 100) == 0:
@@ -680,9 +753,11 @@ def _equilize_nd_hist(df_feat, df_pool, bins=10, n_addrm=5, n_tries=20,
         # Call fill/empty functions
         df_add = _fill_sparse(
             df_before, df_pool,
-            bins=bins, n_add=n_addrm, n_tries=n_tries, seed=None
+            bins=bins, n_add=n_addrm, n_tries=n_tries, seed=None, do_warn=False
         )
         n_rm = df_add.shape[0] - df_before.shape[0]
+        if n_rm == 0:
+            fill_errors += 1
         df_rm = _empty_dense(
             df_add,
             bins=bins, n_rm=n_rm, n_tries=n_tries, seed=None
@@ -708,9 +783,11 @@ def _equilize_nd_hist(df_feat, df_pool, bins=10, n_addrm=5, n_tries=20,
             n_addrm -= 1
             n_tries = int(1.5*n_tries)
             failed_attempts = 0
-            warn(f'Reached maximum of failed attempts ('
-                 f'{max_attempts_fail}). Tuning hyperparameters to n_addrm '
-                 f'= {n_addrm} and n_tries = {n_tries} and continue')
+            if n_addrm != 0:
+                print(f'Reached maximum of failed attempts ('
+                      f'{max_attempts_fail}). Tuning hyperparameters to '
+                      f'n_addrm = {n_addrm} and n_tries = {n_tries} '
+                      f'and continue')
 
         # Gather state information and progress of algorithm
         info.append([i, failed_attempts, n_addrm, n_tries,
@@ -726,6 +803,10 @@ def _equilize_nd_hist(df_feat, df_pool, bins=10, n_addrm=5, n_tries=20,
         np.array(info),
         columns=['Run', 'Failed Attempts', 'n_addrm', 'n_tries',
                  'het_before', 'het_rm', 'het_add', 'het_after'])
+
+    # Report failed fill sparse attempts
+    print(f'Fill Sparse: '
+          f'{fill_errors}/{i+1} attempts were not possible.')  # noqa
 
     # Write Output
     df_final = df_before
@@ -801,7 +882,7 @@ def _largest_n(array, n, maintain_order=True):
 # ## Fill Sparse
 
 def _fill_sparse(df_feat, df_pool, bins=10, n_add=3, n_tries=20,
-                 n_smallest=8, seed=None):
+                 n_smallest=8, seed=None, do_warn=True):
     """Takes the feature dataframe `df_feat` and Computes the nd-hist-array
     with `bins` bins. Locates the `n_smallest` sparsest bins within this array.
     Randomly adds `n_add` elements within a randomly chosen bin of
@@ -838,8 +919,9 @@ def _fill_sparse(df_feat, df_pool, bins=10, n_add=3, n_tries=20,
     add_pool = df_pool_cleaned.loc[tf_array, :]
 
     if (n_pool := add_pool.shape[0]) < n_add:
-        warn(f'Only {n_pool} points available to add for chosen bin, instead'
-             f'of {n_add}, returning original input instead.')
+        if do_warn:
+            warn(f'Only {n_pool} points available to add for chosen bin, '
+             f'instead of {n_add}, returning original input instead.')
         return df_feat
 
     # randomly choose n_add signals n_tries times

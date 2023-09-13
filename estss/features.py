@@ -47,6 +47,17 @@ except FileNotFoundError:
 # ##
 # ## ##########################################################################
 
+def get_features(df_files=('data/exp_feat_only_neg.pkl',
+                           'data/exp_feat_only_posneg.pkl')):
+    return (pd.read_pickle(file) for file in df_files)
+
+
+def compute_features(ts_list=('data/exp_ts_only_neg.pkl',
+                              'data/exp_ts_only_posneg.pkl')):
+    df_ts_list = (pd.read_pickle(file) for file in ts_list)
+    return (features(df_ts) for df_ts in df_ts_list)
+
+
 def features(df_ts, workers=8, show_warnings='ignore', show_progress=False):
     """Calculate all relevant features for all time series of the pandas
     dataframe.
