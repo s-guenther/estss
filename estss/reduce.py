@@ -36,7 +36,8 @@ def compute_reduced_sets(df_feat_list=None, df_ts_list=None, seed=1337):
         random.seed(seed)
 
     print('# ##\n# ## Load and Prepare Data\n# ##')
-    print('##############################################################')
+    print('##########################################################')
+    print('# ## Load Data')
     if df_feat_list is None:
         df_feat_list = features.get_features()
     if df_ts_list is None:
@@ -46,18 +47,22 @@ def compute_reduced_sets(df_feat_list=None, df_ts_list=None, seed=1337):
 
     # reindex second feat and ts dataframe with an offset of +1e6 to be able
     # to differentiate between only_neg/only_posneg in a merged dataframe
+    print('# ## Reindex and Merge Input Dataframes')
     feat_posneg = df_feat_list[1]
     feat_posneg.index += int(1e6)
     df_feat_list[1] = feat_posneg
     ts_posneg = df_ts_list[1]
-    ts_posneg.index += int(1e6)
+    ts_posneg.columns += int(1e6)
     df_ts_list[1] = ts_posneg
 
     # merge and normalize combined feature array
     df_feat_merged = pd.concat(df_feat_list, axis=0, ignore_index=False)
+    print('# ## Dimensional Reduction')
     df_feat_norm, cinfo = dimensional_reduced_feature_space(
         df_feat_merged, plot=False
     )
+    print('# ## Reorder Features')
+    df_feat_merged = df_feat_merged.loc[:, cinfo['cluster'].index]
 
     # split and normalize with minmax again
     df_feat_neg_norm = _norm_min_max(
@@ -69,13 +74,65 @@ def compute_reduced_sets(df_feat_list=None, df_ts_list=None, seed=1337):
 
     # call reduce chain on normalized feature arrays
     print('\n# ##\n# ## Reduce Only Neg Set\n# ##')
-    print('##############################################################')
-    red_set_neg = reduce_chain(df_feat_neg_norm)
+    print('##########################################################')
+    sets_neg = reduce_chain(df_feat_neg_norm)
     print('\n# ##\n# ## Reduce Only PosNeg Set\n# ##')
-    print('##############################################################')
-    red_set_posneg = reduce_chain(df_feat_posneg_norm)
+    print('##########################################################')
+    sets_posneg = reduce_chain(df_feat_posneg_norm)
 
-    return red_set_neg, red_set_posneg
+    print('\n# ##\n# ## Merge, Reorganize and Map TS\n# ##')
+    print('##########################################################')
+    # merge sets
+    sets_both = [pd.concat([n, pn]) for n, pn in zip(sets_neg, sets_posneg)]
+    df_ts_merged = pd.concat(df_ts_list, axis=1, ignore_index=False)
+    # map sets
+    sets = _map_sets(sets_both, df_feat_merged, df_ts_merged)
+
+    # return sets_both, df_feat_merged, df_ts_merged
+    return sets
+
+
+def _map_sets(norm_sets, df_feat, df_ts):
+    # prepare output dict
+    sets = {
+        'features': dict(),
+        'ts': dict(),
+        'norm_space': dict(),
+        'info': dict()
+    }
+    ts_sets = [df_ts.loc[:, nset.index].T for nset in norm_sets]
+    feat_sets = [df_feat.loc[nset.index, :] for nset in norm_sets]
+    mappings = []
+    for nset in norm_sets:
+        npoints = nset.shape[0]
+        ind_neg = np.arange(npoints/2, dtype=int)
+        ind_posneg = np.arange(npoints/2, dtype=int) + 1_000_000
+        ind = np.hstack([ind_neg, ind_posneg])
+        mapping = pd.Series(data=nset.index, index=ind)
+        mappings.append(mapping)
+
+    norm_sets = _reindex_sets(norm_sets, mappings)
+    ts_sets = _reindex_sets(ts_sets, mappings)
+    ts_sets = [df.T for df in ts_sets]
+    feat_sets = _reindex_sets(feat_sets, mappings)
+
+    for feat, ts, nspace, info in zip(feat_sets, ts_sets, norm_sets, mappings):
+        npoints = feat.shape[0]
+        sets['features'][npoints] = feat
+        sets['ts'][npoints] = ts
+        sets['norm_space'][npoints] = nspace
+        sets['info'][npoints] = info
+
+    return sets
+
+
+def _reindex_sets(sets, mappings):
+    trans_sets = []
+    for set_, map_ in zip(sets, mappings):
+        tset = set_.rename(index=dict(zip(map_.values, map_.index.values)),
+                           errors='raise')
+        trans_sets.append(tset)
+    return trans_sets
 
 
 # ##
@@ -96,7 +153,31 @@ def reduce_chain(df_feat_norm, set_sizes=(2048, 512, 128, 32), seed=None):
         sets.append(small_set)
         large_set = small_set
 
-    # print('\nSort Sets\n################################')
+    print('\n# ## Sort Sets')
+    sets = _sort_sets(sets)
+    return sets
+
+
+def _sort_sets(in_sets):
+    # add cluster column
+    sets = copy.deepcopy(in_sets)
+    for ii, set_ in enumerate(sets):
+        set_['ind'] = set_.index
+        set_['set_cluster'] = ii
+        smaller_sets = sets[ii:]
+        for jj, sset in enumerate(smaller_sets):
+            set_.loc[sset.index, 'set_cluster'] = ii + jj + 1
+        set_['mean_cluster'] = pd.cut(set_['mean'],
+                                      bins=np.linspace(0, 1, 11),
+                                      labels=range(10),
+                                      include_lowest=True)
+        # set_.sort_values(by='iqr', inplace=True)
+        # set_.sort_values(by='mean_cluster', inplace=True)
+        # set_.sort_values(by='set_cluster', inplace=True, ascending=False)
+        set_.sort_values(by=['set_cluster', 'mean_cluster', 'iqr', 'ind'],
+                         ascending=[False, False, True, True],
+                         inplace=True)
+        sets[ii] = set_.drop(columns=['set_cluster', 'mean_cluster', 'ind'])
     return sets
 
 
@@ -180,19 +261,23 @@ def dimensional_reduced_feature_space(df_feat, choose_dim=_REPRESENTATIVES,
 # ## Feature Space Normalization
 # ##
 
-def _raw_feature_array_to_feature_space(df_feat):
+def _raw_feature_array_to_feature_space(df_feat, special_treatment=True):
     """Transforms a raw feature space to a normalized one. `df_feat` is a
     mxn pandas dataframe where m is the number of points and n the number of
     dimensions. Normalization performed per dimension. Normalized array is
     again a dataframe with same dimensions and row/col index."""
-    fspace = _prune_feature_space(df_feat)
+    if special_treatment:
+        fspace = _prune_feature_space(df_feat)
+    else:
+        fspace = df_feat
     fspace = (
         fspace
         .apply(_outlier_robust_sigmoid, raw=True)
         .apply(_curtail_at_whiskers, raw=True)
         .apply(_norm_min_max, raw=True)
     )
-    fspace = _manually_repair_dfa(fspace)
+    if special_treatment:
+        fspace = _manually_repair_dfa(fspace)
     return fspace
 
 
@@ -715,7 +800,7 @@ def _remove_index_inplace(distances, indexes, ids, rm_ind):
 # ## Equilize nd hist
 
 def _equilize_nd_hist(df_feat, df_pool, bins=10, n_addrm=5, n_tries=20,
-                      n_max_loops=300, max_attempts_fail=10, seed=None,
+                      n_max_loops=5000, max_attempts_fail=10, seed=None,
                       return_info=False):
     """Takes the feature dataframe `df_feat` and Computes the nd-hist-array
     with `bins` bins. Consecutively adds and removes elements with
@@ -1063,3 +1148,19 @@ def _plot_nd_hist(df_feat, ax=None, bins=10, title='', colorbar=False,
     ax.tick_params(which="minor", bottom=False, left=False)
     ax.tick_params(which="major", bottom=False, left=True)
     return fig, ax
+
+
+# ##
+# ## Test map
+# ##
+
+def _test_map():
+    import pickle
+    with open('../data/map_input.pkl', 'rb') as f:
+        map_input = pickle.load(f)
+    sets = _map_sets(*map_input)
+    return sets
+
+
+if __name__ == '__main__':
+    _test_map()
