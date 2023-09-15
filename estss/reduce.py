@@ -30,7 +30,7 @@ def get_reduced_sets(file='data/reduced_sets.pkl'):
     return data
 
 
-def compute_reduced_sets(df_feat_list=None, df_ts_list=None, seed=1337):
+def compute_reduced_sets(df_feat_list=None, df_ts_list=None, seed=1340):
     if seed is not None:
         np.random.seed(seed)
         random.seed(seed)
@@ -62,7 +62,7 @@ def compute_reduced_sets(df_feat_list=None, df_ts_list=None, seed=1337):
         df_feat_merged, plot=False
     )
     print('# ## Reorder Features')
-    df_feat_merged = df_feat_merged.loc[:, cinfo['cluster'].index]
+    df_feat_merged.sort_index(axis=1, inplace=True)
 
     # split and normalize with minmax again
     df_feat_neg_norm = _norm_min_max(
@@ -522,8 +522,7 @@ def _sort_corr_mat(mat, labels):
                                        (df.shape[1] - df.shape[0])),
                 inner_corr=lambda df: df.mean()[df.index]
             )
-            .sort_values('outer_corr', ascending=True)
-            .sort_values('inner_corr', ascending=False)
+            .sort_values(['inner_corr', 'outer_corr'], ascending=[False, True])
         )
         .droplevel(0)
     )
@@ -1151,16 +1150,21 @@ def _plot_nd_hist(df_feat, ax=None, bins=10, title='', colorbar=False,
 
 
 # ##
-# ## Test map
+# ## Generate Info Table for Set of Sets
 # ##
 
-def _test_map():
-    import pickle
-    with open('../data/map_input.pkl', 'rb') as f:
-        map_input = pickle.load(f)
-    sets = _map_sets(*map_input)
-    return sets
+def _info_for_set_of_sets(set_of_sets):
+    data = []
+    for set_ in set_of_sets:
+        hlist = []
+        col_list = []
+        for n in [4096, 1024, 256, 64]:
+            hlist.append(_heterogeneity(set_['norm_space'][n]))
+            hlist.append(_heterogeneity(set_['norm_space'][n][:int(n/2)]))
+            hlist.append(_heterogeneity(set_['norm_space'][n][int(n/2):]))
+            col_list += [f'H{n}_both', f'H{n}_neg', f'H{n}_posneg']
+        data.append(hlist)
 
-
-if __name__ == '__main__':
-    _test_map()
+    df = pd.DataFrame(data, columns=col_list)  # noqa
+    df.describe()
+    return df
