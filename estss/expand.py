@@ -81,7 +81,7 @@ def get_expanded_ts(df_files=('data/exp_ts_only_neg.pkl',
     df_ts_only_neg : pandas.DataFrame
     df_ts_only_posneg : pandas.DataFrame
     """
-    return (pd.read_pickle(file) for file in df_files)
+    return [pd.read_pickle(file) for file in df_files]
 
 
 def compute_expanded_ts(df_init='data/init_ts.pkl', seed=42):

@@ -67,7 +67,8 @@ def norm_zscore(ts):
 # ## Plot a dataframe of time series
 # ##
 
-def plot_df_ts(df_ts, n=128, which='head', grid=(8, 4)):
+def plot_df_ts(df_ts, n=128, which='head', grid=(8, 4), ylim=(-1, 1),
+               **kwargs):
     """Plots a number of time series from a dataframe.
 
     Dataframe `df_ts` must be an nxm array with m beeing the number of time
@@ -87,6 +88,10 @@ def plot_df_ts(df_ts, n=128, which='head', grid=(8, 4)):
     grid : 2-element iterable, default: (8, 4)
         2-element vector [rows, cols] Time series are plotted into a grid of
         subplots, defines the dimension of the subplotgrid.
+    ylim : 2-element iterable, default: (-1, 1)
+        y-limits of the axis, if None, determine automatically
+    **kwargs : dict()
+        Passed to plot() fcn
 
     Returns
     -------
@@ -123,13 +128,14 @@ def plot_df_ts(df_ts, n=128, which='head', grid=(8, 4)):
             isig += n_grid*i_fig
             if isig < n_ts:
                 ax[k, l].plot([0, 1000], [0, 0], color='gray')
-                ax[k, l].plot(df.iloc[:, isig])
-                ax[k, l].text(0, 0, str(df.columns[isig]),
-                              ha='left', va='bottom',
+                ax[k, l].plot(df.iloc[:, isig], **kwargs)
+                ax[k, l].text(0, 1, str(df.columns[isig]),
+                              ha='left', va='top',
                               transform=ax[k, l].transAxes)
             ax[k, l].set_xticks([])
             ax[k, l].set_yticks([])
-            ax[k, l].set_ylim([-1, 1])
+            if ylim:
+                ax[k, l].set_ylim(ylim)
             ax[k, l].grid('off')
         figs.append(fig)
         axs.append(ax)

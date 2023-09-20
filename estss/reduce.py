@@ -16,7 +16,7 @@ from scipy.spatial.distance import squareform
 from scipy.spatial import KDTree
 from scipy.stats import qmc
 
-from estss import expand, features, util
+from estss import expand, features
 
 
 # ##
@@ -42,8 +42,6 @@ def compute_reduced_sets(df_feat_list=None, df_ts_list=None, seed=1340):
         df_feat_list = features.get_features()
     if df_ts_list is None:
         df_ts_list = expand.get_expanded_ts()
-    df_feat_list = [util.read_df_if_string(df) for df in df_feat_list]
-    df_ts_list = [util.read_df_if_string(df) for df in df_ts_list]
 
     # reindex second feat and ts dataframe with an offset of +1e6 to be able
     # to differentiate between only_neg/only_posneg in a merged dataframe
@@ -336,8 +334,8 @@ def _curtail_at_whiskers(feat_vec):
     low_whisk = np.min(feat_vec[feat_vec >= (low_quart - 1.5*iqr)])
     up_whisk = np.max(feat_vec[feat_vec <= (up_quart + 1.5*iqr)])
     vec = copy.copy(feat_vec)
-    vec[vec < low_whisk] = low_whisk
-    vec[vec > up_whisk] = up_whisk
+    vec[vec <= low_whisk] = low_whisk
+    vec[vec >= up_whisk] = up_whisk
     return vec
 
 
@@ -1005,7 +1003,7 @@ def _fill_sparse(df_feat, df_pool, bins=10, n_add=3, n_tries=20,
     if (n_pool := add_pool.shape[0]) < n_add:
         if do_warn:
             warn(f'Only {n_pool} points available to add for chosen bin, '
-             f'instead of {n_add}, returning original input instead.')
+                 f'instead of {n_add}, returning original input instead.')
         return df_feat
 
     # randomly choose n_add signals n_tries times
@@ -1088,7 +1086,8 @@ def _heterogeneity(df_feat, bins=10, as_histarray=False):
 
 
 def _plot_nd_hist(df_feat, ax=None, bins=10, title='', colorbar=False,
-                  xticks=False, ndigits=3, as_histarray=False):
+                  xticks=False, ndigits=3, as_histarray=False,
+                  gridlinewidth=3, cmap='Greys', norm=None):
     """Plots a multidimensional nd-hist. See `_nd_hist()` for more
     information. `ax` optionally specifies the axis object where to plot the
     nd-hist. `bins=10` determines the number of bins of each histogram,
@@ -1112,8 +1111,11 @@ def _plot_nd_hist(df_feat, ax=None, bins=10, title='', colorbar=False,
     else:
         fig = ax.get_figure()
 
-    mappable = ax.matshow(histarray, aspect='auto', vmin=0, vmax=2 / bins,
-                          cmap='Greys')
+    if norm is None:
+        kwargs = dict(vmin=0, vmax=2/bins)
+    else:
+        kwargs = dict(norm=norm)
+    mappable = ax.matshow(histarray, aspect='auto', cmap=cmap, **kwargs)
     # Add colorbar if option is set
     if colorbar:
         fig.colorbar(mappable, ax=ax)
@@ -1121,8 +1123,9 @@ def _plot_nd_hist(df_feat, ax=None, bins=10, title='', colorbar=False,
     for ii in range(dim):
         for jj in range(bins):
             color = 'k' if histarray.iloc[ii, jj] < 0.1 else 'w'
-            ax.text(jj, ii, f'{histarray.iloc[ii, jj]:.{ndigits}f}',
-                    ha="center", va="center", color=color, clip_on=True)
+            if ndigits is not None:
+                ax.text(jj, ii, f'{histarray.iloc[ii, jj]:.{ndigits}f}',
+                        ha="center", va="center", color=color, clip_on=True)
     # rewrite x,y ticks
     ax.set_yticks(range(dim),
                   labels=names)
@@ -1143,7 +1146,8 @@ def _plot_nd_hist(df_feat, ax=None, bins=10, title='', colorbar=False,
     for _, spine in ax.spines.items():
         spine.set_visible(False)
     ax.set_yticks(np.arange(histarray.shape[0] + 1) - .5, minor=True)
-    ax.grid(which="minor", color="w", axis='y', linestyle='-', linewidth=3)
+    ax.grid(which="minor", color="w", axis='y', linestyle='-',
+            linewidth=gridlinewidth)
     ax.tick_params(which="minor", bottom=False, left=False)
     ax.tick_params(which="major", bottom=False, left=True)
     return fig, ax

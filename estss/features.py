@@ -49,7 +49,7 @@ except FileNotFoundError:
 
 def get_features(df_files=('data/exp_feat_only_neg.pkl',
                            'data/exp_feat_only_posneg.pkl')):
-    return (pd.read_pickle(file) for file in df_files)
+    return [pd.read_pickle(file) for file in df_files]
 
 
 def compute_features(ts_list=('data/exp_ts_only_neg.pkl',

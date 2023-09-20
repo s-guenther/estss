@@ -38,21 +38,6 @@ def get_init_ts(df_file='data/init_ts.pkl'):
 # ## IfES-EES time series related functions
 # ##
 
-def _ees_ts(datafile='data/ees_ts.pkl', selectionsfile='data/ees_selections'):
-    """Loads the ifes-ees confidential data, extracts sections and saves
-    to data/init.pkl.
-    Does only work if raw data and selection file is available."""
-    with open(selectionsfile, 'r') as file:
-        lines = file.readlines()
-    lines = [line.strip() for line in lines]
-
-    ts_array = np.zeros([1000, len(lines)], dtype='float')
-    for col, selection in enumerate(lines):
-        ts = _raw_to_init_from_string(selection, datafile)
-        ts_array[:, col] = ts
-    return pd.DataFrame(ts_array)
-
-
 def _single_raw_to_init(raw_ts, start, stop, endpoint=False, samples=1000):
     """Takes a single raw time series `raw_ts` as numpy array, extracts a
     subsection defined by [`start`, `stop`], resamples to `samples` points,
@@ -78,7 +63,25 @@ def _single_raw_to_init(raw_ts, start, stop, endpoint=False, samples=1000):
     return init
 
 
-def _raw_to_init_from_string(selection, datafile='data/ees_ts.pkl'):
+def _ees_ts(datafile='data/ees_ts.pkl', selectionsfile='data/ees_selections',
+            *, _raw_to_init_fcn=_single_raw_to_init):
+    """Loads the ifes-ees confidential data, extracts sections and saves
+    to data/init.pkl.
+    Does only work if raw data and selection file is available."""
+    with open(selectionsfile, 'r') as file:
+        lines = file.readlines()
+    lines = [line.strip() for line in lines]
+
+    ts_array = np.zeros([1000, len(lines)], dtype='float')
+    for col, selection in enumerate(lines):
+        ts = _raw_to_init_from_string(selection, datafile,
+                                      _raw_to_init_fcn=_raw_to_init_fcn)
+        ts_array[:, col] = ts
+    return pd.DataFrame(ts_array)
+
+
+def _raw_to_init_from_string(selection, datafile='data/ees_ts.pkl', *,
+                             _raw_to_init_fcn=_single_raw_to_init):
     """Wrapper around _single_raw_to_init(). Which time series and start and
     stop are defined in the `selection` string in the format
     '<ts_name> <start> - <stop>'.
@@ -87,7 +90,7 @@ def _raw_to_init_from_string(selection, datafile='data/ees_ts.pkl'):
     dset, start, _, stop = selection.split(' ')
     start, stop = int(start), int(stop)
     data = pd.read_pickle(datafile)
-    return _single_raw_to_init(data[dset][0], start, stop)
+    return _raw_to_init_fcn(data[dset][0], start, stop)
 
 
 # ## Random selections
