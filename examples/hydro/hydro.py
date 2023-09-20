@@ -1,8 +1,13 @@
 #!/usr/bin/env python3
 
+import os
+
 import numpy as np
+import pandas as pd
 import scipy.io as sio
 from scipy.interpolate import pchip_interpolate as pchip
+
+from estss import reduce
 
 
 def n2048set_to_mat(sets, savepath='examples/hydro/ts_neg_2048.mat',
@@ -91,5 +96,72 @@ def _test_month():
     return ts
 
 
-if __name__ == '__main__':
-    _test_month()
+_COLNAMES = [
+    'LCOH',
+    'Strompreis',
+    'CO2_Limit',
+    'CO2_FP',
+    'Ely_Anlage_Nenn',
+    'Ely_Nenn',
+    'Peri_Nenn',
+    'Ver_Nenn',
+    'Speicher_Nenn',
+    'WEA_Nenn',
+    'PV_Nenn',
+    'Ely_VLS',
+    'Netzbezugsmenge',
+    'Netzbezug_Nenn',
+    'Ueberschuss_PV',
+    'Ueberschuss_WEA',
+    'Ueberschuss_Summe',
+    'Ueberschuss_Nenn',
+    'PV_Strom_gesamt',
+    'WEA_Strom_gesamt',
+    'Gesamtkosten',
+    'Kosten_Ely_Nenn',
+    'Kosten_Verd_Nenn',
+    'Kosten_HDS_Nenn',
+    'Kosten_OuM_H2_Comp',
+    'Kosten_Strombezug_Netz',
+    'Kosten_WEA',
+    'Kosten_PV',
+    'Durchgespeicherte_Wasserstoffmenge',
+    'Add_WEA',
+    'Add_PV',
+    'Add_tot',
+    'EE_Ely_Korrelation_mat_index',
+    'RES_share',
+    'EE_Ely_Korrelation_eigen',
+    'EE_Ely_Korrelation_eigen_ex',
+    'EE_Ely_Korrelation_eigen_index',
+    'EE_Ely_Korrelation_eigen_excess_index'
+]
+
+
+def import_from_mat_and_merge():
+    os.chdir('/home/sg/estss')
+
+    monthly = sio.loadmat('examples/hydro/Mix_monthly_sol_arr_PS_9_0_1.mat')
+    seasonal = sio.loadmat('examples/hydro/Mix_seasonal_sol_arr_PS_9_0_1.mat')
+    yearly = sio.loadmat('examples/hydro/Mix_yearly_sol_arr_PS_9_0_1.mat')
+
+    monthly = monthly['Mix_sol_arr_PS_9_0_1']
+    seasonal = seasonal['Mix_sol_arr_PS_9_0_1']
+    yearly = yearly['Mix_sol_arr_PS_9_0_1']
+
+    sets = reduce.get_reduced_sets()
+    feat = sets['features'][4096].iloc[:2048, :]
+
+    monthly = pd.DataFrame(monthly, index=feat.index, columns=_COLNAMES)
+    seasonal = pd.DataFrame(seasonal, index=feat.index, columns=_COLNAMES)
+    yearly = pd.DataFrame(yearly, index=feat.index, columns=_COLNAMES)
+
+    monthly = pd.concat([feat, monthly], axis=1)
+    seasonal = pd.concat([feat, seasonal], axis=1)
+    yearly = pd.concat([feat, yearly], axis=1)
+
+    monthly['seasonality'] = 'monthly'
+    seasonal['seasonality'] = 'seasonal'
+    yearly['seasonality'] = 'yearly'
+
+    return pd.concat([monthly, seasonal, yearly], axis=0)
