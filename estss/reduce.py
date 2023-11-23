@@ -1,4 +1,79 @@
 #!/usr/bin/env python3
+"""The 'reduce.py' submodule is part of a larger module designed for handling
+and processing time series data in feature space. This submodule focuses on
+reducing and declustering time series data within a feature space, enabling
+more manageable and insightful analyses of large datasets.
+
+Important Top Level Functions:
+------------------------------
+- get_reduced_sets(file='data/reduced_sets.pkl'):
+    Loads precomputed reduced sets of data from a pickle file, typically output
+    from feature reduction processes.
+- compute_reduced_sets(df_feat_list=None, df_ts_list=None, seed=1340):
+    Computes and merges reduced sets of features and time series data, applying
+    dimensional reduction.
+- reduce_chain(df_feat_norm, set_sizes=(2048, 512, 128, 32), seed=None):
+    Sequentially reduces the size of a feature set to smaller sets, maintaining
+    data representativeness.
+- reduce_single(df_feat, n, seed=None, kws_map=None, kws_rm=None,
+  kws_equi=None):
+    Systematically reduces the number of features in a dataset to a specified
+    count.
+- dimensional_reduced_feature_space(df_feat, choose_dim=_REPRESENTATIVES,
+  plot=True):
+    Reduces the dimensionality of a feature space, selecting representative
+    features for analysis.
+
+Important Preprocessing Functions:
+----------------------------------
+- _raw_feature_array_to_feature_space(df_feat, special_treatment=True):
+    Transforms a raw feature array into a normalized feature space, applying
+    several normalization steps.
+
+Important Dimensionality Reduction Functions:
+---------------------------------------------
+- _hierarchical_corr_mat(df_feat, threshold=0.4, method=_modified_pearson,
+  linkmethod='average', clust_crit='distance'):
+    Computes a hierarchical correlation matrix, clustering features based on
+    their correlations.
+- _plot_hierarchical_corr_mat(corr_mat, info, selected_feat=None,
+  clust_color='limegreen', ax=None, write_clust_names=True):
+    Visualizes a hierarchical correlation matrix, highlighting clusters and
+    their representatives.
+- _plot_corr_mat_scatter(df_feat, samples=200, bins=20):
+    Creates a scatterplot matrix to visualize pairwise correlations between
+    each dimension in a feature dataframe.
+
+Important Reduction Functions:
+------------------------------
+- _map_to_uniform(df_feat, n, distance=2.0, n_tries=3, overrelax=1.05,
+  seed=None):
+    Selects points from a feature set to create a uniformly distributed subset.
+- _remove_closest(df_feat, n_final, distance=2.0, leafsize=None):
+    Removes points from a dataframe until only a specified number of points are
+    left.
+- _equilize_nd_hist(df_feat, df_pool, bins=10, n_addrm=5, n_tries=20,
+  n_max_loops=5000, max_attempts_fail=10, seed=None):
+    Optimizes the heterogeneity of a feature set by adding and removing
+    elements.
+
+Important Misc Functions:
+-------------------------
+- _nd_hist(df_feat, bins=10):
+    Creates a multidimensional histogram of features for analysis of feature
+    distribution.
+- _plot_nd_hist(df_feat, ax=None, bins=10, title='', colorbar=False,
+  xticks=False, ndigits=3, as_histarray=False):
+    Plots a multidimensional histogram, visualizing the distribution of
+    features in multiple dimensions.
+- _heterogeneity(df_feat, bins=10, as_histarray=False):
+    Calculates the heterogeneity of a dataset, reflecting the uniformity or
+    discrepancy in feature distribution.
+
+Refer to individual function docstrings for more detailed information and usage
+instructions.
+"""
+
 import copy
 import pickle
 import random
@@ -25,12 +100,59 @@ from estss import expand, features
 # ## ##########################################################################
 
 def get_reduced_sets(file='data/reduced_sets.pkl'):
+    """Loads reduced sets of data from a specified pickle file.
+
+    This function reads a file containing precomputed reduced sets of data,
+    typically the output from a feature reduction process, and returns the
+    data. The file is expected to be in pickle format. By default, it looks for
+    a file named 'reduced_sets.pkl' in the 'data' directory, but a different
+    file path can be specified.
+
+    Parameters
+    ----------
+    file : str, default: 'data/reduced_sets.pkl'
+        Path to the pickle file containing the reduced data sets.
+
+    Returns
+    -------
+    data : object
+        dict of dicts of data frames. The upper level dict contains the keys
+        'features', 'ts', 'norm_space' and 'info'. Each holds a lower level
+        dict with the keys 4096, 1024, 256 and 64. Each lower level value is a
+        pandas dataframe holding the information defined by the two dict keys.
+    """
     with open(file, 'rb') as f:
         data = pickle.load(f)
     return data
 
 
 def compute_reduced_sets(df_feat_list=None, df_ts_list=None, seed=1340):
+    """Computes reduced sets of features and time series data frames
+
+    This function processes and merges given feature and time series datasets,
+    applies dimensional reduction, and then generates reduced sets of features.
+    It handles both negative and positive/negative feature sets, merges them,
+    and then maps these sets to the corresponding time series data. The
+    function allows for seeding the random number generator to ensure
+    reproducibility. If no arguments are not provided, default ones are loaded.
+
+    Parameters
+    ----------
+    df_feat_list : list of pandas.DataFrame, optional
+        A list of feature dataframes. If None, default feature sets are loaded.
+    df_ts_list : list of pandas.DataFrame, optional
+        A list of time series dataframes. If None, default time series sets are
+        loaded.
+    seed : int, default: 1340
+        Seed for the random number generator.
+
+    Returns
+    -------
+    sets : list of pandas.DataFrame
+        A list of merged and mapped feature sets corresponding to the reduced
+        time series data.
+    """
+
     if seed is not None:
         np.random.seed(seed)
         random.seed(seed)
@@ -91,6 +213,32 @@ def compute_reduced_sets(df_feat_list=None, df_ts_list=None, seed=1340):
 
 
 def _map_sets(norm_sets, df_feat, df_ts):
+    """Maps normalized sets to corresponding feature and time series data.
+
+    This function creates mappings between normalized sets, features, and time
+    series data.  It organizes these mappings into a dictionary containing the
+    features, time series, normalized space, and additional information for
+    each set. The function processes each normalized set, reindexes them
+    according to a specified scheme, and then associates each set with its
+    corresponding features and time series data. The result is a comprehensive
+    mapping that facilitates easy access to related data across different sets.
+
+    Parameters
+    ----------
+    norm_sets : list of pandas.DataFrame
+        A list of normalized data sets.
+    df_feat : pandas.DataFrame
+        The original features dataframe.
+    df_ts : pandas.DataFrame
+        The original time series dataframe.
+
+    Returns
+    -------
+    sets : dict
+        A dictionary containing the mapped sets. Keys include 'features', 'ts'
+        (time series), 'norm_space' (normalized space), and 'info' (additional
+        information) for each set size.
+    """
     # prepare output dict
     sets = {
         'features': dict(),
@@ -125,6 +273,31 @@ def _map_sets(norm_sets, df_feat, df_ts):
 
 
 def _reindex_sets(sets, mappings):
+    """Reindexes a list of dataframes based on provided mappings.
+
+    This function takes a list of dataframes ('sets') and a corresponding list
+    of mappings, and applies these mappings to reindex each dataframe in the
+    list. The reindexing process involves changing the index of each dataframe
+    in 'sets' according to the mapping provided.  This is typically used to
+    align dataframes with a common indexing scheme for consistency and easier
+    comparison or merging.
+
+    Subroutine of `_map_sets()`
+
+    Parameters
+    ----------
+    sets : list of pandas.DataFrame
+        A list of dataframes to be reindexed.
+    mappings : list of pandas.Series
+        A list of mappings, where each mapping corresponds to a dataframe in
+        'sets'. The mapping is a pandas Series where the values are the current
+        index and the index of the Series represents the new index.
+
+    Returns
+    -------
+    trans_sets : list of pandas.DataFrame
+        The list of transformed dataframes with updated indices.
+    """
     trans_sets = []
     for set_, map_ in zip(sets, mappings):
         tset = set_.rename(index=dict(zip(map_.values, map_.index.values)),
@@ -138,6 +311,39 @@ def _reindex_sets(sets, mappings):
 # ##
 
 def reduce_chain(df_feat_norm, set_sizes=(2048, 512, 128, 32), seed=None):
+    """Creates a chain of reduced feature sets from a normalized feature
+    dataframe.
+
+    This function sequentially reduces the size of a given feature set to a
+    series of smaller sets, as specified by `set_sizes`. Each subsequent set is
+    a reduced version of the previous one, with the reduction process aiming to
+    maintain the representativeness of the original set. The function also
+    sorts the resulting sets after the reduction process. It allows for seeding
+    the random number generator to ensure reproducibility.
+
+    Parameters
+    ----------
+    df_feat_norm : pandas.DataFrame
+        The normalized feature dataframe to be reduced.
+    set_sizes : tuple of int, default: (2048, 512, 128, 32)
+        The sizes of the reduced feature sets to be created.
+    seed : int, optional
+        Seed for the random number generator.
+
+    Returns
+    -------
+    sets : list of pandas.DataFrame
+        A list of reduced feature dataframes, each corresponding to the sizes
+        specified in `set_sizes`.
+
+    Examples
+    --------
+    >>> df_normalized = pd.DataFrame(np.random.rand(10000, 10))
+    >>> reduced_sets = reduce_chain(df_normalized)
+    >>> for reduced_set in reduced_sets:
+    >>>     print(reduced_set.shape)
+    """
+
     if seed is not None:
         np.random.seed(seed)
         random.seed(seed)
@@ -157,6 +363,28 @@ def reduce_chain(df_feat_norm, set_sizes=(2048, 512, 128, 32), seed=None):
 
 
 def _sort_sets(in_sets):
+    """Sorts a list of dataframes based on clustering and feature statistics.
+
+    This function takes a list of dataframes, each representing a set of
+    features dataframes , and sorts them based on clustering information and
+    statistical measures. It adds a cluster identifier to each feature,
+    categorizes features based on the mean value, and sorts them within each
+    set. The sorting is performed based on the cluster identifier, mean cluster
+    category, interquartile range (IQR), and original index. This process
+    organizes the features in each set for better interpretability and
+    analysis.
+
+    Parameters
+    ----------
+    in_sets : list of pandas.DataFrame
+        A list of dataframes, each containing a set of features to be sorted.
+
+    Returns
+    -------
+    sets : list of pandas.DataFrame
+        The sorted list of dataframes, with features organized based on
+        clustering and statistical measures.
+    """
     # add cluster column
     sets = copy.deepcopy(in_sets)
     for ii, set_ in enumerate(sets):
@@ -169,9 +397,6 @@ def _sort_sets(in_sets):
                                       bins=np.linspace(0, 1, 11),
                                       labels=range(10),
                                       include_lowest=True)
-        # set_.sort_values(by='iqr', inplace=True)
-        # set_.sort_values(by='mean_cluster', inplace=True)
-        # set_.sort_values(by='set_cluster', inplace=True, ascending=False)
         set_.sort_values(by=['set_cluster', 'mean_cluster', 'iqr', 'ind'],
                          ascending=[False, False, True, True],
                          inplace=True)
@@ -185,6 +410,45 @@ def _sort_sets(in_sets):
 
 def reduce_single(df_feat, n,
                   seed=None, kws_map=None, kws_rm=None, kws_equi=None):
+    """Reduces the number of elements in a dataset to a specified count.
+
+    This function systematically reduces the number of elements in `df_feat` to
+    `n` by applying a series of steps. It first maps the elements to a uniform
+    distribution, then removes the closest elements to reduce redundancy, and
+    finally equilizes the n-dimensional histogram. This process aims to extract
+    a representative and declustered subset of elements. The function allows
+    for customizing each step with additional keyword arguments.
+
+    Note: Although not neccessary for a proper functionioning of the
+    algorithm, the feature vectors within `df_feat` are expected to be already
+    normalized to a range of [0, 1]
+
+    Parameters
+    ----------
+    df_feat : pandas.DataFrame
+        The original feature dataframe from which to select a subset.
+    n : int
+        The desired number of features in the reduced set.
+    seed : int, optional
+        Seed for the random number generator.
+    kws_map : dict, optional
+        Additional keyword arguments for the mapping step.
+    kws_rm : dict, optional
+        Additional keyword arguments for the feature removal step.
+    kws_equi : dict, optional
+        Additional keyword arguments for the equilizing step.
+
+    Returns
+    -------
+    df_red : pandas.DataFrame
+        The reduced feature dataframe with `n` features.
+
+    Examples
+    --------
+    >>> df = pd.DataFrame(np.random.rand(100, 10))
+    >>> reduced_df = reduce_single(df, 30)
+    >>> print(reduced_df.shape)
+    """
     if seed is not None:
         np.random.seed(seed)
     if kws_map is None:
@@ -238,6 +502,46 @@ _REPRESENTATIVES = (
 
 def dimensional_reduced_feature_space(df_feat, choose_dim=_REPRESENTATIVES,
                                       plot=True):
+    """Reduces the dimensionality of a feature space and optionally plots the
+    hierarchical correlation matrix.
+
+    This function reduces the dimensionality of the given feature space
+    `df_feat` by selecting representative features. It first normalizes the
+    feature space and then performs hierarchical clustering to identify
+    clusters of correlated features. The user can specify custom dimensions to
+    choose or let the function select the first feature in each cluster by
+    default. Optionally, it plots the hierarchical correlation matrices before
+    and after dimensionality reduction to visualize the clustering and
+    correlation structure of features.
+
+    Parameters
+    ----------
+    df_feat : pandas.DataFrame
+        The original high-dimensional feature dataframe.
+    choose_dim : list, optional
+        List of dimensions to retain after dimensionality reduction. Defaults
+        to a preset list of representative features.
+    plot : bool, default: True
+        If True, plots the hierarchical correlation matrices before and after
+        the dimensionality reduction.
+
+    Returns
+    -------
+    fspace2 : pandas.DataFrame
+        The reduced feature space dataframe.
+    cinfo : dict
+        Information dictionary containing details about the hierarchical
+        clustering and the selected features.
+
+    Examples
+    --------
+    >>> df = pd.DataFrame(np.random.rand(100, 20))
+    >>> reduced_df, cluster_info = \
+            dimensional_reduced_feature_space(df, choose_dim=None)
+    >>> print(reduced_df.head())
+    >>> print(cluster_info)
+    """
+
     fspace = _raw_feature_array_to_feature_space(df_feat)
     corr_mat, cinfo = _hierarchical_corr_mat(fspace)
     if choose_dim is None:
@@ -260,10 +564,30 @@ def dimensional_reduced_feature_space(df_feat, choose_dim=_REPRESENTATIVES,
 # ##
 
 def _raw_feature_array_to_feature_space(df_feat, special_treatment=True):
-    """Transforms a raw feature space to a normalized one. `df_feat` is a
-    mxn pandas dataframe where m is the number of points and n the number of
-    dimensions. Normalization performed per dimension. Normalized array is
-    again a dataframe with same dimensions and row/col index."""
+    """Transforms a raw feature array into a normalized feature space.
+
+    This function normalizes a raw feature dataframe on a per-dimension basis,
+    converting it into a normalized feature space. It applies several steps of
+    normalization, including an outlier-robust sigmoid transformation,
+    curtailing values at whiskers, and normalizing each feature to the [0, 1]
+    range. The function allows for optional special treatment, which includes
+    additional pruning and repairing of the feature space.
+
+    Parameters
+    ----------
+    df_feat : pandas.DataFrame
+        A mxn dataframe representing the raw feature space, where 'm' is the
+        number of data points and 'n' is the number of dimensions/features.
+    special_treatment : bool, default: True
+        If True, performs additional processing steps like pruning and manual
+        repairs.
+
+    Returns
+    -------
+    fspace : pandas.DataFrame
+        The normalized feature space, maintaining the same dimensions and index
+        as `df_feat`.
+    """
     if special_treatment:
         fspace = _prune_feature_space(df_feat)
     else:
@@ -359,7 +683,6 @@ def _manually_repair_dfa(fspace):
 # ## Dimensionality Reduction / Clustering
 # ##
 
-
 def _modified_pearson(a, b):
     """Modified Pearson Correlation - does not only test linear, but also
     squared, sqr root, and 1/x."""
@@ -373,19 +696,48 @@ def _modified_pearson(a, b):
 
 def _hierarchical_corr_mat(df_feat, threshold=0.4, method=_modified_pearson,
                            linkmethod='average', clust_crit='distance'):
-    """Computes a hierarchical correlation matrix from feature array
-    `df_feat`. Features with a correlation above 'threshold' are clustered
-    together. Correlation is computed with `method` (default is a modified
-    pearson correlation, which also tests squared and 1/x correlation
-    besides linear). The linkage method for clustering is provided by
-    `linkmethod='average'` and the cluster criterion by
-    `clust_crit='distance'`.
-    Returns the clustered correlation matrix as dataframe as well as an
-    info dict with:
-      'cluster' - df that contains inner and outer correlations of clusters
-      'threshold', 'linkmethod', 'clustcrit' - Algorithm values set as
-          argument of the function
-     """
+    """Computes and clusters a hierarchical correlation matrix from a feature
+    array.
+
+    This function calculates a correlation matrix from the given feature array
+    `df_feat` and performs hierarchical clustering on the features. The
+    clustering is based on a specified threshold, and a modified Pearson
+    correlation method is used by default. This method considers linear,
+    squared, square root, and reciprocal correlations. The function returns the
+    sorted correlation matrix along with cluster information, including inner
+    and outer correlations of clusters and algorithm settings used.
+
+    Parameters
+    ----------
+    df_feat : pandas.DataFrame or numpy.ndarray
+        Feature array for which the hierarchical correlation matrix is
+        computed.
+    threshold : float, default: 0.4
+        Threshold for clustering, with features above this correlation level
+        clustered together.
+    method : function, default: _modified_pearson
+        Correlation computation method. Default is a modified Pearson
+        correlation.
+    linkmethod : str, default: 'average'
+        Linkage method used for clustering.
+    clust_crit : str, default: 'distance'
+        Criterion used to form clusters.
+
+    Returns
+    -------
+    corr_mat_sort : pandas.DataFrame
+        The sorted correlation matrix after clustering.
+    info : dict
+        Dictionary containing information about the clustering, including
+        cluster details, threshold, linkage method, and clustering criterion.
+
+    Examples
+    --------
+    >>> df = pd.DataFrame(np.random.rand(10, 5))
+    >>> corr_mat, info = _hierarchical_corr_mat(df)
+    >>> print(corr_mat)
+    >>> print(info)
+    """
     # based on https://wil.yegelwel.com/cluster-correlation-matrix/
     # and https://www.kaggle.com/code/sgalella/correlation-heatmaps-with
     # -hierarchical-clustering/notebook
@@ -406,14 +758,52 @@ def _hierarchical_corr_mat(df_feat, threshold=0.4, method=_modified_pearson,
     return corr_mat_sort, info
 
 
-def _plot_hierarchical_corr_mat(corr_mat, info, selected_feat=None):
-    """Plots the precomputed correlation matrix `corr_mat`. Additionally
-    frames found clusters, highlights cluster representatives and provides
-    info on inner and outer cluster correlation as well as algorithm
-    information. `info` is a dict returned by `_hierarchical_corr_mat()`.
-    `selected_features` is an optional argument that overrides the default
-    cluster representatives.
-    Returns fig, ax objects of the plot."""
+def _plot_hierarchical_corr_mat(corr_mat, info, selected_feat=None,
+                                clust_color='limegreen', ax=None,
+                                write_clust_names=True, **kwargs):
+    """Visualizes a hierarchical correlation matrix with cluster delineation.
+
+    This function plots a precomputed correlation matrix, highlighting the
+    identified clusters and their representatives. It frames each cluster and
+    can optionally label the y-axis with cluster names.  The plot includes
+    additional information about the inner and outer correlations of the
+    clusters and allows customization of the cluster representation color and
+    other heatmap properties.
+
+    Parameters
+    ----------
+    corr_mat : pandas.DataFrame or numpy.ndarray
+        The precomputed correlation matrix to be visualized.
+    info : dict
+        Information dictionary returned by `_hierarchical_corr_mat()`,
+        containing details about the clusters.
+    selected_feat : list, optional
+        List of features to highlight as cluster representatives. If None,
+        defaults to the first feature of each cluster.
+    clust_color : str, default: 'limegreen'
+        Color used for highlighting clusters and their representatives.
+    ax : matplotlib.axes.Axes, optional
+        The axes object on which to plot the heatmap. If None, a new figure and
+        axes are created.
+    write_clust_names : bool, default: True
+        Whether to label the y-axis with cluster names.
+    **kwargs
+        Additional keyword arguments passed to `sns.heatmap()`.
+
+    Returns
+    -------
+    fig : matplotlib.figure.Figure
+        The figure object containing the plot.
+    ax : matplotlib.axes.Axes
+        The axes object containing the plot.
+
+    Examples
+    --------
+    >>> corr_matrix = pd.DataFrame(np.random.rand(10, 10))
+    >>> info = {'cluster': pd.DataFrame({'label': np.random.randint(0, 3, 10)})}
+    >>> fig, ax = _plot_hierarchical_corr_mat(corr_matrix, info)
+    >>> plt.show()
+    """
     # Get feature names of cluster representatives, either by taking the first
     # feature of each cluster or through selected_feat argument
     if selected_feat is None:
@@ -422,11 +812,18 @@ def _plot_hierarchical_corr_mat(corr_mat, info, selected_feat=None):
              for s in list(info['cluster'].index)]
 
     # Make main plot
-    fig, ax = plt.subplots()
+    if ax is not None:
+        fig = ax.get_figure()
+    else:
+        fig, ax = plt.subplots()
+    if write_clust_names:
+        yt_labels = names
+    else:
+        yt_labels = False
     sns.heatmap(
         np.abs(corr_mat),
         vmin=0, vmax=1, cmap=_create_custom_cmap(info['threshold']), ax=ax,
-        square=True, xticklabels=False, yticklabels=names
+        square=True, xticklabels=False, yticklabels=yt_labels, **kwargs
     )
 
     # Make Cluster Rectangles and highlight Cluster Representatives
@@ -437,19 +834,20 @@ def _plot_hierarchical_corr_mat(corr_mat, info, selected_feat=None):
     for ll in set(labels):
         start = np.searchsorted(labels, ll)
         stop = np.searchsorted(labels, ll, side='right')
-        ax.add_patch(_cluster_rect(start, stop, total, xlim, ylim))
+        ax.add_patch(_cluster_rect(start, stop, total, xlim, ylim,
+                                   edgecolor=clust_color))
     for start, nn in enumerate(names):
         if nn == "":
             continue
         ax.add_patch(_cluster_rect(start, start+1, total, xlim, ylim,
-                                   facecolor='limegreen', edgecolor='none'))
+                                   facecolor=clust_color, edgecolor='none'))
 
     # Add cluster inner/outer correlation info
     idict = _cluster_info(info['cluster'], selected_feat)
     iinfo = idict['inner_agg']
     oinfo = idict['outer_agg']
     infostring = (f'Number of Clusters:\n'
-                  f'   {max(info["cluster"].label)}\n'
+                  f'   {len(selected_feat)}\n'
                   f'Avg. Inner-Cluster-Corr.:\n'
                   f'   {iinfo["mean"]:.2f} $\pm$ {iinfo["std"]:.2f}\n'  # noqa
                   f'Avg. Outer-Cluster-Corr.:\n'
@@ -458,11 +856,11 @@ def _plot_hierarchical_corr_mat(corr_mat, info, selected_feat=None):
                   f'   Threshold: {info["threshold"]}\n'
                   f'   Linkage Method: {info["linkmethod"]}\n'
                   f'   Cluster Criterion: {info["clust_crit"]}')  # noqa
-    ax.text((xlim[1] - xlim[0])*1.0 + xlim[0],
-            (ylim[1] - ylim[0])*1.0 + ylim[0],
+    ax.text((xlim[1] - xlim[0])*0.98 + xlim[0],
+            (ylim[1] - ylim[0])*0.98 + ylim[0],
             infostring,
-            bbox=dict(facecolor='white', alpha=0.9, edgecolor='black'),
-            va='top', ha='right', ma='left')
+            bbox=dict(facecolor='white', alpha=0.7, edgecolor='black'),
+            va='top', ha='right', ma='left', fontsize=8)
 
     return fig, ax
 
@@ -572,7 +970,7 @@ def _cluster_info(df_info, cnames=None):
                 inner_agg=inner_agg, outer_agg=outer_agg)
 
 
-def _create_custom_cmap(threshold=0.4, c_gray='gray', c_col='plasma',
+def _create_custom_cmap(threshold=0.4, c_gray='gray', c_col='Blues',
                         n_values=100, cgap=0.2):
     """Creates a custom colormap intended for hierarchical correlation
     matrix that combines a greyscale colormap for values below threshold and
@@ -584,9 +982,9 @@ def _create_custom_cmap(threshold=0.4, c_gray='gray', c_col='plasma',
         np.linspace(1, 1 - cgap * threshold, nval1)
     )
     c2 = plt.cm.get_cmap(c_col)(
-        np.linspace(1 - (cgap + (1 - cgap) * threshold), 0, nval2)
+        np.linspace(1, (cgap + (1 - cgap) * threshold), nval2)
     )
-    colors = np.vstack([c1, c2])
+    colors = np.vstack([c1, c2[::-1, :]])
     mymap = mcolors.LinearSegmentedColormap.from_list(
         'mymap', colors, N=n_values
     )
@@ -594,9 +992,37 @@ def _create_custom_cmap(threshold=0.4, c_gray='gray', c_col='plasma',
 
 
 def _plot_corr_mat_scatter(df_feat, samples=200, bins=20):
-    """Plots the correlation matrix of `df_feat` as a scatterplot,
-    where each dim is plotted against each other in a matrix, the diagonal
-    shows the histogram of each dimension."""
+    """Creates a scatterplot matrix of the correlation matrix from a feature
+    dataframe.
+
+    This function generates a scatterplot matrix to visualize the pairwise
+    correlations between each dimension (feature) in the provided dataframe
+    `df_feat`. The scatterplots are displayed for each pair of dimensions, with
+    histograms along the diagonal showing the distribution of each individual
+    dimension. A subset of the data can be sampled for visualization to enhance
+    performance and clarity.
+
+    Parameters
+    ----------
+    df_feat : pandas.DataFrame
+        The feature dataframe to be visualized.
+    samples : int, default: 200
+        The number of data points to sample from `df_feat` for the scatterplot
+        matrix.
+    bins : int, default: 20
+        The number of bins to use for the histograms along the diagonal.
+
+    Returns
+    -------
+    pg : seaborn.axisgrid.PairGrid
+        The PairGrid object containing the scatterplot matrix.
+
+    Examples
+    --------
+    >>> df = pd.DataFrame(np.random.rand(1000, 5), columns=['A', 'B', 'C', 'D', 'E'])
+    >>> pg = _plot_corr_mat_scatter(df)
+    >>> plt.show()
+    """
     pg = sns.PairGrid(df_feat.sample(samples))
     pg.map_upper(sns.scatterplot, s=5)
     pg.map_lower(sns.scatterplot, s=5)
@@ -615,12 +1041,42 @@ def _plot_corr_mat_scatter(df_feat, samples=200, bins=20):
 
 def _map_to_uniform(df_feat, n,
                     distance=2.0, n_tries=3, overrelax=1.05, seed=None):
-    """Will select `n` points from `df_feat` that are roughly uniformely
-    distributed within the volume of `df_feat` by generating a
-    quasi-random halten sequence and mapping this sequence to the nearest
-    points of df_feat. `distance` is the distance metric (manhattan=1,
-    euclidean=2, ...). `n_tries` and `overrelax` are parameters of the query
-    algorithm."""
+    """Selects points from a feature set to create a roughly uniformly
+    distributed subset.
+
+    This function selects `n` points from the input feature dataframe `df_feat`
+    such that they are uniformly distributed within the feature space. It
+    employs a quasi-random Halton sequence to generate points in the feature
+    space and then finds the nearest points in `df_feat`. The function allows
+    for control over the distance metric, the number of attempts, and
+    relaxation parameters to ensure an even distribution.
+
+    Parameters
+    ----------
+    df_feat : pandas.DataFrame
+        The input feature dataframe from which to select points.
+    n : int
+        The number of points to select.
+    distance : float, default: 2.0
+        The distance metric to use (e.g., 1 for Manhattan, 2 for Euclidean).
+    n_tries : int, default: 3
+        The number of attempts to generate a uniform set.
+    overrelax : float, default: 1.05
+        A relaxation parameter to control the density of the queried points.
+    seed : int, optional
+        Seed for the random number generator.
+
+    Returns
+    -------
+    pandas.DataFrame
+        A subset of `df_feat` that approximates a uniform distribution within
+        the feature space.
+
+    Examples
+    --------
+    >>> df = pd.DataFrame(np.random.rand(1000, 5))
+    >>> uniform_df = _map_to_uniform(df, 100)
+    """
     n_dim = df_feat.shape[1]
     n_query = int(n*overrelax)
     # The loop queries successively more points than neccessary as fewer points
@@ -650,14 +1106,47 @@ def _uniform_set(n, dim, seed=None):
 
 def _find_nearest(large, small, distance=2.0, rm_outliers=True,
                   rm_duplicates=True, leafsize=None, workers=-1):
-    """For each point in `small`, finds the nearest point in the
-    dataframe `large`.
-    If `rm_outliers=True` removes matches of points in `small` that are far
-    away (it is interpreted that these are outside the search space volume
-    that will map to the surface of the search space volume. If
-    `rm_duplicates=True`, it will remove multiple matched points.
-    `leafsize` is a parameter of the kd-tree search. `workers` defines how
-    many workers are used for parallel processing"""
+    """Finds the nearest points in one dataframe to each point in another dataframe.
+
+    This function identifies the nearest point in the 'large' dataframe for
+    each point in the 'small' dataframe.  It uses a k-d tree for efficient
+    nearest neighbor search. The function can also remove outlier matches
+    (points in 'small' that are far from any point in 'large') and duplicate
+    matches. It supports parallel processing for improved performance.
+
+    Parameters
+    ----------
+    large : numpy.ndarray or pandas.DataFrame
+        The dataframe containing the set of points in which nearest neighbors
+        are to be found.
+    small : numpy.ndarray or pandas.DataFrame
+        The dataframe containing the set of points for which nearest neighbors
+        are sought.
+    distance : float, default: 2.0
+        The distance metric to use (e.g., 1 for Manhattan, 2 for Euclidean).
+    rm_outliers : bool, default: True
+        If True, removes matches that are considered outliers.
+    rm_duplicates : bool, default: True
+        If True, removes duplicate matches.
+    leafsize : int, optional
+        The leaf size parameter of the k-d tree. If None, a default size is
+        calculated.
+    workers : int, default: -1
+        The number of worker threads for parallel processing. -1 means using
+        all processors.
+
+    Returns
+    -------
+    pandas.DataFrame or numpy.ndarray
+        A subset of 'large' containing the nearest point to each point in 'small'.
+
+    Examples
+    --------
+    >>> large_df = pd.DataFrame(np.random.rand(1000, 3))
+    >>> small_df = pd.DataFrame(np.random.rand(50, 3))
+    >>> nearest_points = _find_nearest(large_df, small_df)
+    >>> print(nearest_points.shape)
+    """
     if leafsize is None:
         leafsize = _default_leafsize(large.shape[0])
     tree = KDTree(large, leafsize=leafsize)
@@ -726,10 +1215,39 @@ def _random_add_rm(df_large, df_small, n):
 # ##
 
 def _remove_closest(df_feat, n_final, distance=2.0, leafsize=None):
-    """Removes points within the dataframe `df_feat` until only `n_final`
-    are left. Points are successively removed by removing the closest ones
-    to each other. `distance` is the distance metric, `leafsize` an internal
-    parameter for kd-tree generation"""
+    """Systematically removes points from a dataframe to reach a specified
+    count.
+
+    This function reduces the number of points in a dataframe `df_feat` to
+    `n_final` by iteratively removing the closest pairs of points. It uses a
+    k-d tree for efficient distance calculations. The points to be removed are
+    determined based on the specified distance metric. This function is useful
+    for thinning a dataset by removing redundant or highly similar data points.
+
+    Parameters
+    ----------
+    df_feat : pandas.DataFrame or numpy.ndarray
+        The dataframe from which points are to be removed.
+    n_final : int
+        The desired number of points to retain in the dataframe.
+    distance : float, default: 2.0
+        The distance metric for the k-d tree (e.g., 1 for Manhattan, 2 for
+        Euclidean).
+    leafsize : int, optional
+        The leaf size parameter for the k-d tree. If None, a default size is
+        used.
+
+    Returns
+    -------
+    pandas.DataFrame or numpy.ndarray
+        The reduced dataframe with only `n_final` points remaining.
+
+    Examples
+    --------
+    >>> df = pd.DataFrame(np.random.rand(1000, 3))
+    >>> reduced_df = _remove_closest(df, 500)
+    >>> print(reduced_df.shape)
+    """
     if leafsize is None:
         leafsize = _default_leafsize(df_feat.shape[0])
 
@@ -799,30 +1317,60 @@ def _remove_index_inplace(distances, indexes, ids, rm_ind):
 def _equilize_nd_hist(df_feat, df_pool, bins=10, n_addrm=5, n_tries=20,
                       n_max_loops=5000, max_attempts_fail=10, seed=None,
                       return_info=False):
-    """Takes the feature dataframe `df_feat` and Computes the nd-hist-array
-    with `bins` bins. Consecutively adds and removes elements with
-    `_fill_sparse()` and `_remove_empty()` to improve the heterogeneity of
-    the set. For more info, see these functions.
-    `df_feat` is the original feature dataframe to improve and `df_pool` is
-    the extended feature dataframe from which points can be taken. If
-    `return_info=True', the function returns a tuple (df_feat_improved,
-    df_info) instead of only returning the feature dataframe. `seed`
-    initializes the random generator.
-    Hyperparameters passed to the subroutines:
-    - `bins` defines the number of bins of the nd hist
-    - 'n_addrm' how many points to add/ to remove
-    - 'n_tries' how many sampled variants are calculated by the subroutines
-    Hyperparameters of the outer optimization algorithm:
-    - `n_max_loops` how many maximum tries until results are returned if
-      premature termination is not hit before
-    - `max_attempts_fail´ how many failed attempts are made to improve the
-      heterogeneity before adjusting the initial hyperparameters `n_tries`
-      and `n_addrm`
+    """ Optimizes the heterogeneity of a feature set by adding and removing
+    elements.
+
+    This function improves the uniformity of distribution of a feature
+    dataframe `df_feat` by iteratively adding and removing elements. It uses
+    the `_fill_sparse()` and `_remove_empty()` functions to add elements to
+    sparse areas and remove them from dense areas of the feature space,
+    respectively. The process is repeated in loops until either the maximum
+    number of loops is reached or the heterogeneity can no longer be improved.
+    The function allows for tracking and tuning the hyperparameters during the
+    optimization process.
+
+    Parameters
+    ----------
+    df_feat : pandas.DataFrame
+        The original feature dataframe to be optimized.
+    df_pool : pandas.DataFrame
+        The extended feature dataframe from which points can be added to
+        `df_feat`.
+    bins : int, default: 10
+        The number of bins for the nd-hist used in the optimization process.
+    n_addrm : int, default: 5
+        Number of points to add or remove in each loop iteration.
+    n_tries : int, default: 20
+        Number of sampled variants calculated by the subroutines in each
+        iteration.
+    n_max_loops : int, default: 5000
+        Maximum number of optimization loops to run.
+    max_attempts_fail : int, default: 10
+        Number of failed attempts allowed before adjusting the hyperparameters
+        `n_tries` and `n_addrm`.
+    seed : int, optional
+        Seed for the random number generator.
+    return_info : bool, default: False
+        If True, returns a tuple of the optimized dataframe and a dataframe
+        with optimization info.
+
+    Returns
+    -------
+    pandas.DataFrame
+        The optimized feature dataframe if `return_info` is False. Otherwise, a
+        tuple of the optimized dataframe and a dataframe containing detailed
+        information about each optimization loop.
+
+    Examples
+    --------
+    >>> df_original = pd.DataFrame(np.random.rand(100, 5))
+    >>> df_pool = pd.DataFrame(np.random.rand(200, 5))
+    >>> df_optimized = _equilize_nd_hist(df_original, df_pool)
     """
     if seed is not None:
         np.random.seed(seed)
 
-    # run empyt dense/fill sparse function n_loops times
+    # run empty dense/fill sparse function n_loops times
     df_before = copy.copy(df_feat)
     failed_attempts = 0
     info = []
@@ -1059,19 +1607,45 @@ def _nd_hist(df_feat, bins=10):
 
 
 def _heterogeneity(df_feat, bins=10, as_histarray=False):
-    """Computes the heterogeneity of dataset `df_feat` The heterogeneity is
-    an indirect measure for the discrepancy/uniformity of a set. `df_feat`
-    is a mxn feature dataframe with m being the number of points and n being
-    the number of features/dimensions of that point. The feature array is
-    expected to be normed in [0, 1] per dimension. The heterogeneity is
-    calculated by summing up the squared deviations from an uniformely
-    distributed histogram with `bins` bins. `as_histarray` is an optional
-    argument, if True, the first argument `df_feat` is treated as an
-    nd-hist-array instead of an normalized feature array. If false,
-    the nd-hist-array will be computed from the feature array.
-    If an `histarray` is provied, it must be normed (sum along 1-axis must be
-    one).
-    Returns a scalar. """
+    """ Calculates the heterogeneity of a dataset represented by a feature
+    array or histogram.
+
+    This function measures the heterogeneity of a dataset, which reflects the
+    uniformity or discrepancy in the distribution of features. It computes this
+    by analyzing the squared deviations from an uniformly distributed
+    histogram. The function can operate directly on a feature array or on a
+    precomputed histogram array. For a feature array, each feature dimension
+    should be normalized in the range [0, 1].
+
+    Parameters
+    ----------
+    df_feat : pandas.DataFrame or numpy.ndarray
+        A mxn feature array, with m points and n dimensions, or a precomputed
+        histogram array if `as_histarray` is set to True. Each dimension should
+        be normalized in the range [0, 1].
+    bins : int, default: 10
+        The number of bins to be used in histogram computation.
+    as_histarray : bool, default: False
+        If True, treats `df_feat` as a precomputed histogram array.
+
+    Returns
+    -------
+    heterogeneity : float
+        A scalar value representing the heterogeneity of the dataset. A higher
+        value indicates greater discrepancy in feature distribution.
+
+    Notes
+    -----
+    The heterogeneity is a measure of how evenly distributed the data is across
+    the histogram bins.  This function can be particularly useful in
+    understanding the diversity of feature distributions in a dataset.
+
+    Examples
+    --------
+    >>> df = pd.DataFrame(np.random.rand(100, 4), columns=['A', 'B', 'C', 'D'])
+    >>> heterogeneity = _heterogeneity(df)
+    >>> print(f'Heterogeneity of the dataset: {heterogeneity}')
+    """
     if as_histarray:
         histarray = df_feat
     else:
@@ -1088,16 +1662,58 @@ def _heterogeneity(df_feat, bins=10, as_histarray=False):
 def _plot_nd_hist(df_feat, ax=None, bins=10, title='', colorbar=False,
                   xticks=False, ndigits=3, as_histarray=False,
                   gridlinewidth=3, cmap='Greys', norm=None):
-    """Plots a multidimensional nd-hist. See `_nd_hist()` for more
-    information. `ax` optionally specifies the axis object where to plot the
-    nd-hist. `bins=10` determines the number of bins of each histogram,
-    `colorbar=False` specifies if an additional colorbar shall be plotted.
-    `ndigits=3` determines how many digits will be shown in each bin and as
-    a label of how many percent of the points are within this bin. If
-    `as_histarray=True`, the first input `df_feat` is treated as a histarray
-    dataframe (see `_nd_hist()`) instead of a feature array dataframe.
-    `title` labels additionally the nd-histogram plot in the lower left
-    corner."""
+    """Generates a plot of a multidimensional histogram (nd-hist) from a
+    feature array.
+
+    This function creates a visual representation of the distribution of
+    features in a multidimensional space. It accepts either a feature array or
+    a precomputed histogram array. It provides options to customize the
+    appearance of the plot, including the number of bins, color mapping, grid
+    appearance, and more.  The plot can be enhanced with a colorbar, custom
+    tick labels, and a title.  Each cell's value can be annotated, and the
+    overall heterogeneity of the data can be displayed in the title.
+
+    Parameters
+    ----------
+    df_feat : pandas.DataFrame or numpy.ndarray
+        A feature array (dataframe or array) to plot, or a precomputed
+        histogram array if `as_histarray` is True.
+    ax : matplotlib.axes.Axes, optional
+        The axes on which to plot the histogram. If None, a new figure and axes
+        are created.
+    bins : int, default: 10
+        The number of bins for the histogram in each dimension.
+    title : str, default: ''
+        Title for the plot, displayed in the lower left corner.
+    colorbar : bool, default: False
+        Whether to add a colorbar to the plot.
+    xticks : bool, default: False
+        Whether to display x-axis tick labels.
+    ndigits : int, default: 3
+        Number of decimal places for labels in each bin.
+    as_histarray : bool, default: False
+        If True, treats `df_feat` as a precomputed histogram array.
+    gridlinewidth : int, default: 3
+        Line width for the grid separating histogram bins.
+    cmap : str, default: 'Greys'
+        Colormap for the histogram plot.
+    norm : matplotlib.colors.Normalize, optional
+        Normalization for the colormap.
+
+    Returns
+    -------
+    fig : matplotlib.figure.Figure
+        The figure object containing the plot.
+    ax : matplotlib.axes.Axes
+        The axes object containing the plot.
+
+    Examples
+    --------
+    >>> df = pd.DataFrame(np.random.rand(100, 4), columns=['A', 'B', 'C', 'D'])
+    >>> fig, ax = _plot_nd_hist(df)
+    >>> plt.show()
+    """
+
     if as_histarray:
         histarray = df_feat
     else:
@@ -1158,6 +1774,20 @@ def _plot_nd_hist(df_feat, ax=None, bins=10, title='', colorbar=False,
 # ##
 
 def _info_for_set_of_sets(set_of_sets):
+    """ Calculates and summarizes the heterogeneity of sets in a collection.
+
+    For each set in `set_of_sets`, this function evaluates the heterogeneity
+    of its 'norm_space' at different sizes (4096, 1024, 256, 64) and their
+    halves. The results are aggregated into a DataFrame, providing a
+    statistical description for the heterogeneity of each set.
+
+    Parameters:
+    - set_of_sets (iterable): A collection of sets with 'norm_space' data.
+
+    Returns:
+    - pd.DataFrame: A summary DataFrame with heterogeneity values for
+      each set size and its divisions.
+    """
     data = []
     for set_ in set_of_sets:
         hlist = []
