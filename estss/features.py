@@ -1,16 +1,39 @@
 #!/usr/bin/env python3
-"""Calculate time series features by mainly invoking the feature calculation
-routines of the toolboxes `pycatch22`, `kats`, `tsfel` and `tsfresh` which
-are comprehended by a few manually implemented features not present in these
-toolboxes.
+""" The `features.py` submodule is a comprehensive utility for calculating a
+wide array of time series features.  It leverages various established toolboxes
+like `pycatch22`, `kats`, `tsfel`, and `tsfresh`, supplemented by manually
+implemented features not present in these toolboxes.
 
-The features are the starting point for feature engineering and building the
-feature space into which the time series are transformed to reduce a large
-expanded superset into a final and pruned small subset.
+This submodule is fundamental for feature engineering, transforming time series
+into a feature space for downstream reduction and analysis. The calculated
+features form the basis for building and refining the feature space,
+facilitating the reduction of a large expanded superset into a final, pruned,
+and small subset.
 
-Relevant methods are:
-    features()
-    single_features()
+Key Functions:
+--------------
+- get_features(df_files): Retrieves precomputed feature sets from specified
+  pickle files.
+- compute_features(ts_list): Computes features for a list of time series
+  dataframes by applying the `features()` function to each dataframe in the
+  list.
+- features(df_ts, workers, show_warnings, show_progress): Calculates all
+  relevant features for each time series in a given dataframe. This function is
+  the primary method for converting a mxn time series dataframe (m: number of
+  time steps, n: number of time series) into an nxf feature dataframe (n:
+  number of time series, f: number of features).
+- single_features(ts, show_progress): Computes a comprehensive set of features
+  for a single time series using various feature extraction libraries and
+  custom implementations. This function is used within `features()` to process
+  individual time series.
+
+The submodule is optimized for handling large datasets typical in time series
+analysis, ensuring efficient computation and versatility in feature extraction
+methodologies. It serves as a crucial component in pre-processing and preparing
+time series data for further analytical tasks.
+
+Refer to individual function docstrings for more detailed information and usage
+instructions.
 """
 
 from functools import partial
@@ -49,13 +72,55 @@ except FileNotFoundError:
 
 def get_features(df_files=('data/exp_feat_only_neg.pkl',
                            'data/exp_feat_only_posneg.pkl')):
+    """Loads and returns feature dataframes from specified pickle files.
+
+    This function retrieves precomputed feature sets from given pickle file
+    paths.  By default, it loads features from 'exp_feat_only_neg.pkl' and
+    'exp_feat_only_posneg.pkl' located in the 'data' directory, but other file
+    paths can also be specified.  Each file is expected to contain a pandas
+    DataFrame with precomputed features.
+
+    Parameters
+    ----------
+    df_files : tuple of str, default: ('data/exp_feat_only_neg.pkl',
+        'data/exp_feat_only_posneg.pkl')
+        A tuple containing the file paths of the pickle files from which to
+        load the feature dataframes.
+
+    Returns
+    -------
+    list of pandas.DataFrame
+        A list containing the loaded feature dataframes, one for each file in
+        `df_files`.
+    """
     return [pd.read_pickle(file) for file in df_files]
 
 
 def compute_features(ts_list=('data/exp_ts_only_neg.pkl',
                               'data/exp_ts_only_posneg.pkl')):
+    """Computes features for each time series dataframe in a given list of
+    files.
+
+    This function processes a list of pickle files, each containing a time
+    series dataframe, and applies the `features` function to compute a
+    comprehensive set of features for each dataframe.
+
+    Parameters
+    ----------
+    ts_list : tuple of str, default: ('data/exp_ts_only_neg.pkl',
+        'data/exp_ts_only_posneg.pkl')
+        A tuple containing the file paths of the pickle files from which to
+        load the time series dataframes.
+
+    Returns
+    -------
+    list of pandas.DataFrame
+        A list of dataframes, each containing the computed features for the
+        corresponding time series dataframe.
+    """
+
     df_ts_list = (pd.read_pickle(file) for file in ts_list)
-    return (features(df_ts) for df_ts in df_ts_list)
+    return [features(df_ts) for df_ts in df_ts_list]
 
 
 def features(df_ts, workers=8, show_warnings='ignore', show_progress=False):
