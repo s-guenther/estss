@@ -2,10 +2,13 @@
 
 import os
 
+import matplotlib as mpl
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import scipy.io as sio
 from scipy.interpolate import pchip_interpolate as pchip
+import seaborn as sns
 
 from estss import reduce
 
@@ -165,3 +168,102 @@ def import_from_mat_and_merge():
     yearly['seasonality'] = 'yearly'
 
     return pd.concat([monthly, seasonal, yearly], axis=0)
+
+
+def plot_scatter():
+    data = import_from_mat_and_merge()
+    yearly = data.query('seasonality == "yearly"')
+
+    fig, ax = plt.subplots(1, 1)
+    fig.set_size_inches(3.5, 2.3)
+    ax.set_position([0.10, 0.15, 0.899, 0.849])
+    sns.scatterplot(x=-yearly['mean'], y=yearly['LCOH'],
+                    hue='Netzbezugsmenge', ax=ax, data=yearly,
+                    hue_norm=(-20e6, 100e6), palette='Blues')
+    ax.set_xlim(0, 1)
+    ax.set_ylim(5, 40)
+    ax.set_xlabel('Normalized mean $\overline{x}/\hat{x}$',
+                  size=8, labelpad=-0)
+    ax.set_ylabel('Levelized Cost of Hydrogen $C$',
+                  size=8, labelpad=-2)
+    ax.tick_params(axis='both', labelsize=8)
+    return fig, ax
+
+
+def plot_sobol():
+    paths = ('/home/sg/estss/examples/hydro/sobol_res_10k_mix_LCOH_orig.mat',
+             '/home/sg/estss/examples/hydro/sobol_res_10k_mix_LCOH_new.mat')
+    data = [sio.loadmat(path) for path in paths]
+
+    fig, axs = plt.subplot_mosaic(
+        [['orig', 'new']],
+        gridspec_kw=dict(top=0.92, bottom=0.11, left=0.33, right=0.999,
+                         wspace=0.15),
+        width_ratios=[1, 1],
+    )
+    fig.set_size_inches(3.5, 3.5)
+
+    ytop = np.arange(9)[::-1] + 0.2
+    ybot = np.arange(9)[::-1] - 0.2
+
+    blues = mpl.colormaps.get_cmap('Blues')(
+        np.linspace(0, 1, 4)
+    )
+    b1 = blues[1, :]
+    b2 = blues[2, :]
+    b3 = blues[3, :]
+
+    err_kw1 = dict(capsize=2, ecolor=b2, clip_on=False)
+    err_kw2 = dict(capsize=2, ecolor=b3, clip_on=False)
+
+    for d, ax in zip(data, axs.values()):
+        f0 = d['indices_fO'].squeeze()
+        f0_err = np.abs(np.vstack([d['conf_int_fO_low'],
+                                   d['conf_int_fO_high']]) - f0)
+
+        tot = d['indices_total'].squeeze()
+        tot_err = np.abs(np.vstack([d['conf_int_total_low'],
+                                    d['conf_int_total_high']]) - tot)
+
+        ax.set_xlabel('Sobol\' Index', size=8)
+        ax.set_ylim(-0.4, 8.4)
+        ax.set_xlim(0, 0.505)
+        ax.set_xticks([0, 0.1, 0.2, 0.3, 0.4, 0.5])
+        ax.set_xticklabels(['0', '', '0.2', '', '0.4', ''], size=8)
+        ax.grid(axis='x', zorder=0)
+        ax.spines['top'].set_visible(False)
+        ax.spines['right'].set_visible(False)
+        ax.set_axisbelow(True)
+
+        ax.barh(ytop, f0, xerr=f0_err, height=0.4,
+                error_kw=err_kw1, color=b1, clip_on=False, zorder=1)
+        ax.barh(ybot, tot, xerr=tot_err, height=0.4,
+                error_kw=err_kw2, color=b2, clip_on=False, zorder=1)
+
+
+    fig.patches.extend(
+        [plt.Rectangle(
+            (0.01, 0.1), 0.98, 0.10,
+            fill=True, ec=b3, fc=b1, alpha=0.2, zorder=0, linewidth=1.5,
+            transform=fig.transFigure, figure=fig
+        )]
+    )
+    axs['new'].set_yticks(ytop - 0.2)
+    axs['new'].set_yticklabels([])
+    axs['orig'].set_yticks(ytop - 0.2)
+    axs['orig'].set_yticklabels([
+        'Availability of\nRenewable Energy', 'Interest Rate', 'CAPEX RES',
+        'CAPEX Electrolyzer',
+        'Spec Energy Con-\nsump. of Electrolyzer\nat Nominal Power',
+        'CAPEX Storage\nand Compressor', 'Grid Electricity Price',
+        'Grid Electricity\nEmission Intensity', 'Demand\nCharacteristic'],
+        size=7,
+    )
+    axs['orig'].tick_params(axis='y', which='major', pad=5)
+
+    axs['orig'].text(0, 8.5, '(a) Original\n      time series', size=8,
+                     va='bottom', ha='left', clip_on=False)
+    axs['new'].text(0, 8.5, '(b) Declustered\n      time series', size=8,
+                    va='bottom', ha='left', clip_on=False)
+
+    return fig, ax

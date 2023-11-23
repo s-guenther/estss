@@ -3,8 +3,10 @@
 import os
 import pickle
 
+import matplotlib as mpl
 from matplotlib import pyplot as plt
 from matplotlib import patches as mpatches
+from matplotlib import patheffects as pe
 import numpy as np
 import pandas as pd
 import scipy.io as sio
@@ -142,27 +144,40 @@ def plot_mean_hyb_main():
     red = hess['red_feat']
 
     fig, ax = plt.subplots(1, 1)
+    fig.set_size_inches(3.5, 3.5*3/4)
+    ax.set_position([0.12, 0.14, 0.879, 0.859])
 
     # calc and plot 50, 75, 90, 95 line
     mod_hyb = red['hyb_pot']/(1 + red['mean'])
     mod_hyb.sort_values(inplace=True, ascending=False)
     quants = [95, 90, 75, 50]
-    cols = np.linspace(0.9, 0.7, len(quants))
+    # cols = np.linspace(0.9, 0.7, len(quants))
+    blues = mpl.colormaps.get_cmap('Blues')(
+        np.linspace(0, 1, 2*len(quants)+1)
+    )
+    darkblue = blues[-1, :]
+    cols = blues[1:len(quants)+1, :]
     for perc, col in zip(quants, cols):
         val = np.percentile(mod_hyb, 100 - perc)
         patch = mpatches.Polygon(
             [(1, 0), (0, 1), (0, val)],
-            ec=None, fc=str(col)
+            ec=None, fc=col
         )
-        ax.text(0.005, val, perc, va='bottom', ha='left', weight='bold')
+        ax.text(0.01, val, f'{perc}%', va='bottom', ha='left',
+                color=darkblue, size=8,
+                path_effects=[pe.Stroke(linewidth=3, foreground='w'),
+                              pe.Normal()])
         ax.add_patch(patch)
 
-    ax.plot([0, 1], [1, 0], color='0.2')
+    ax.plot([0, 1], [1, 0], color=darkblue)
 
     # plot scatter
     sns.scatterplot(x=-red['mean'], y=red['hyb_pot'],
-                    ax=ax, color='0.3', s=10)
+                    ax=ax, color=darkblue, s=7)
     ax.autoscale(tight=True)
+    ax.tick_params(axis='both', labelsize=8)
+    ax.set_ylabel('Hybridisation Potential $P$', labelpad=-3)
+    ax.set_xlabel('Normalized mean $\overline{x}/\hat{x}$', labelpad=-2)
 
     return fig, ax
 
@@ -186,18 +201,42 @@ def plot_compare_init_exp_red():
     )
     exp = hess['exp_feat']
 
-    fig, ax = plt.subplots(1, 3)
-    sns.scatterplot(x=-init64['mean'], y=init64['hyb_pot'],
-                    ax=ax[0], color='0.8', s=10)
+    blues = mpl.colormaps.get_cmap('Blues')(
+        np.linspace(0, 1, 7)
+    )
+    darkblue = blues[-1, :]
+    lightblue = blues[1, :]
+    fig, ax = plt.subplot_mosaic(
+        [['n64', 'init', 'exp']],
+        gridspec_kw=dict(top=0.999, bottom=0.2, left=0.06, right=0.999,
+                         wspace=0.12, hspace=0.35),
+        width_ratios=[1, 1, 1],
+    )
+    fig.set_size_inches(3.5, 1.4)
+
+    # ax['n64'].plot([0, 1], [1, 0], color=lightblue)
+    # ax['n64'].autoscale(tight=True)
+    # ax['init'].plot([0, 1], [1, 0], color=lightblue)
+    # ax['init'].autoscale(tight=True)
+    # ax['exp'].plot([0, 1], [1, 0], color=lightblue)
+    # ax['exp'].autoscale(tight=True)
     sns.scatterplot(x=-red64['mean'], y=red64['hyb_pot'],
-                    ax=ax[1], color='0.8', s=10)
+                    ax=ax['n64'], color=darkblue, s=5)
+    sns.scatterplot(x=-init64['mean'], y=init64['hyb_pot'],
+                    ax=ax['init'], color=darkblue, s=5)
     sns.scatterplot(x=-exp['mean'], y=exp['hyb_pot'],
-                    ax=ax[2], color='0.8', s=2)
-    ax[0].plot([0, 1], [1, 0], color='0.8')
-    ax[0].autoscale(tight=True)
-    ax[1].plot([0, 1], [1, 0], color='0.8')
-    ax[1].autoscale(tight=True)
-    ax[2].plot([0, 1], [1, 0], color='0.8')
-    ax[2].autoscale(tight=True)
-    fig.tight_layout()
+                    ax=ax['exp'], color=darkblue, s=2)
+
+    for a in ax.values():
+        a.set_xlim(0, 1)
+        a.set_ylim(0, 1)
+        a.set_xlabel("$\overline{x}/\hat{x}$", labelpad=-5, size=8)
+        a.set_ylabel("")
+        a.set_yticks([0, 0.5, 1])
+        a.set_xticks([0, 0.5, 1])
+        a.set_yticklabels(["", "", ""])
+        a.set_xticklabels(["  0", "", "1  "])
+        a.tick_params(axis='both', labelsize=8)
+    ax['n64'].set_ylabel("$P$", labelpad=-5, size=8)
+    ax['n64'].set_yticklabels(["0", "", "1"])
     return fig, ax

@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
 
 import os
+import pickle
 
 import numpy as np
 import pandas as pd
 from matplotlib import pyplot as plt
 import matplotlib as mpl
 from matplotlib import patheffects as pe
-import cycler
 
-from estss import reduce, features
+from estss import reduce, features, init
 
 
 def plot_nd_hist_matrix(calc=False):
@@ -40,20 +40,24 @@ def plot_nd_hist_matrix(calc=False):
     # ## create diagram
     fig, ax = plt.subplot_mosaic(
         [['initial', 'expanded'], ['n4096', 'n1024'], ['n256', 'n64'],
-         ['cmap', 'cmap'], ['dims', 'dims']],
-        gridspec_kw=dict(top=1, bottom=0.11, left=0, right=1, wspace=0.05,
-                         hspace=0.20),
-        height_ratios=[1, 1, 1, 0.1, 0.01],
+         ['cmap', 'cmap']],
+        gridspec_kw=dict(top=1, bottom=0.04, left=0, right=1, wspace=0.12,
+                         hspace=0.35),
+        height_ratios=[1, 1, 1, 0.14],
     )
-    fig.set_size_inches(8.9/2.54, 12/2.54)
+    fig.set_size_inches(8.9/2.54, 11/2.54)
 
     # make cmap
-    cmap = mpl.colors.ListedColormap(
-        ['darkblue', 'steelblue', 'lightblue', 'whitesmoke',
-         'lightsalmon', 'indianred', 'maroon']
-    )
+    # cmap = mpl.colors.ListedColormap(
+    #     ['darkblue', 'steelblue', 'lightblue', 'whitesmoke',
+    #      'lightsalmon', 'indianred', 'maroon']
+    # )
+    nval = 7
+    c1 = mpl.colormaps.get_cmap('RdBu')(np.linspace(0, 1, nval))[::-1, :]
+    c1[3, :] = [0.93, 0.93, 0.93, 1]
+    cmap = mpl.colors.LinearSegmentedColormap.from_list('mycmap', c1, N=nval)
     bounds = [0, 0.02, 0.05, 0.07, 0.13, 0.15, 0.18, 1]
-    norm = mpl.colors.BoundaryNorm(bounds, cmap.N)
+    norm = mpl.colors.BoundaryNorm(bounds, nval)
     titlelabels = ['initial', 'expanded', 'n4096', 'n1024', 'n256', 'n64']
 
     # loop through histograms
@@ -76,10 +80,11 @@ def plot_nd_hist_matrix(calc=False):
         )
         a.get_xaxis().set_ticks([])
         a.get_yaxis().set_ticks([])
-        ttl_lbl = ( f'({letter}) {lbl} set, '
-                    f'H = {reduce._heterogeneity(set_):.3f}' # noqa
+        lbl = lbl if lbl is not 'expanded' else 'manif.'
+        ttl_lbl = (f'({letter}) {lbl} set, '
+                   f'$h_{{14,10}}$ = {reduce._heterogeneity(set_):.3f}' # noqa
         )
-        a.set_title(ttl_lbl, {'va': 'top'}, loc='left', y=-0.07, fontsize=8)
+        a.set_title(ttl_lbl, {'va': 'top'}, loc='left', y=-0.13, fontsize=8)
 
     #  make extra info axes
     ax['cmap'].matshow(np.array([[1, 4, 6, 10, 14, 17, 20]])/100,
@@ -93,53 +98,102 @@ def plot_nd_hist_matrix(calc=False):
         )
     ax['cmap'].axis('off')
     ax['cmap'].set_title(
-        f'(g) Color encoding of ND-Histograms',
+        f'Relative frequency',
         loc='left', y=-1.5, fontsize=8
     )
-    ax['dims'].axis('off')
-    ax['dims'].set_title(
-        (f'temporal_centroid, loc_of_last_max, dfa, rs_range, mode5, \n'
-         f'share_above_mean, iqr, mean, rcp_num, acf_first_zero, \n'
-         f'median_of_abs_diff, freq_mean, mean_2nd_diff, trev\n'
-         f'(h) Dimension names of ND-histograms from top to bottom\n'),
-        {'va': 'top'},
-        loc='left',
-        y=-8,
-        fontsize=8
-    )
+    return fig, ax
+
+
+def plot_n32_ts(yspace=2.0, xspace=100, which='results', **kwargs):
+    os.chdir('/home/sg/estss/')
+
+    if which == 'results':
+        sets = reduce.get_reduced_sets()
+        ts_set = sets['ts'][64].iloc[:, 32:]
+    elif which == 'init':
+        ts_set = init.get_init_ts().sample(32, axis='columns', random_state=3)
+    else:
+        raise ValueError(f'Invalid value which = {which}')
+
+    fig, ax = plt.subplots(1, 1)
+    fig.set_size_inches(3.5, 12/2.54)
+    ax.set_position([0, 0, 1, 1])
+    # colormap = plt.get_cmap('Paired')(range(2))
+    # ax.set_prop_cycle(cycler.cycler(color=colormap))
+    c0 = (0.75, 0.75, 0.75)
+    c1 = (0, 96/255, 156/255)
+    ax.set_xlim([-13, 2000 + 1*xspace])
+    ax.set_ylim([-16*yspace + 0.9, 1])
+    ax.axis('off')
+    for ii in range(32):
+        # coordinate transformation
+        row = ii % 16
+        col = ii // 16
+        ts = ts_set.iloc[:, ii]
+        x = np.arange(1000) + col * 1000 + col * xspace
+        y = ts - yspace * row
+        x0, xend, y0, coff = x[0], x[-1], -yspace * row, 0.9
+
+        # plot coordinate system
+        ax.plot([x0, xend - 20], [y0, y0], **kwargs,
+                linewidth=0.5, color=c0)
+        ax.plot([x0, x0], [y0 - coff, y0 + coff - 0.2],
+                linewidth=0.5, color=c0)
+        # arrows
+        t1 = plt.Polygon([(xend, y0),
+                          (xend - 40, y0 - 0.15),
+                          (xend - 40, y0 + 0.15)],
+                         color=c0, ec=None)
+        t2 = plt.Polygon([(x0, y0 + coff),
+                          (x0 - 13, y0 + coff - 0.4),
+                          (x0 + 13, y0 + coff - 0.4)],
+                         color=c0, ec=None)
+        ax.add_patch(t1)
+        ax.add_patch(t2)
+        # axes text
+        ax.text(xend, y0 - 0.16, '$t$',
+                va='top', ha='right', color=c0, size=8, zorder=0)
+        ax.text(x0 + 13, y0 + coff + 0.1, '$x(t)$',
+                va='top', ha='left', color=c0, size=8, zorder=0)
+
+        # plot time series
+        ax.plot(
+            x, y,
+            path_effects=[pe.Stroke(linewidth=2, foreground='w'),
+                          pe.Normal()],
+            linewidth=0.5, color=c1,
+            **kwargs
+        )
 
     return fig, ax
 
 
-def plot_n64_ts(yspace=1, xspace=50, **kwargs):
-    os.chdir('/home/sg/estss/')
+def plot_corr_mat(calc=False):
+    # calc or load data
+    if calc:
+        df_feat_list = features.get_features()
+        df_feat = pd.concat(df_feat_list, axis=0, ignore_index=True)
+        fspace = reduce._raw_feature_array_to_feature_space(df_feat)  # noqa
+        corr_mat, info = reduce._hierarchical_corr_mat(fspace)  # noqa
+        with open('/home/sg/estss/data/hier_corr_data.pkl', 'wb') as file:
+            pickle.dump((corr_mat, info), file)
+    else:
+        with open('/home/sg/estss/data/hier_corr_data.pkl', 'rb') as file:
+            corr_mat, info = pickle.load(file)
 
-    sets = reduce.get_reduced_sets()
-    n64 = sets['ts'][64]
-
-    fig, ax = plt.subplots(1, 1)
-    fig.set_size_inches(18/2.54, 12/2.54)
-    ax.set_position([0, 0, 1, 1])
-    colormap = plt.get_cmap('Paired')(range(8))
-    ax.set_prop_cycle(cycler.cycler(color=colormap))
-    ax.set_xlim([0, 4000 + 3*xspace])
-    ax.set_ylim([-16*yspace - 0.1, 0.8])
-    ax.axis('off')
-    for ii in range(64):
-        row = ii % 16
-        col = ii // 16
-        ts = n64.iloc[:, ii]
-        x = np.arange(1000) + col * 1000 + col * xspace
-        y = ts - yspace * row
-        ax.plot([x[0], x[-1]], [-yspace * row, -yspace * row], **kwargs)
-        ax.plot(
-            x, y,
-            path_effects=[pe.Stroke(linewidth=3, foreground='w'), pe.Normal()],
-            linewidth=0.5,
-
-            **kwargs
-        )
-
+    # Process data
+    fig, ax = plt.subplots(2, 1)
+    ax[0].set_position((0, 0.4/3.9, 1, 3.5/3.9))
+    ax[1].set_position((0, 0.050, 1, 0.03))
+    fig.set_size_inches(3.5, 3.9)
+    reduce._plot_hierarchical_corr_mat(  # noqa
+        corr_mat, info,
+        clust_color='lightsalmon', ax=ax[0], write_clust_names=False,
+        selected_feat=reduce._REPRESENTATIVES,  # noqa
+        cbar_ax=ax[1],
+        cbar_kws=dict(orientation='horizontal')
+    )
+    ax[1].tick_params(axis='both', labelsize=8)
     return fig, ax
 
 
