@@ -99,7 +99,7 @@ from estss import expand, features
 # ##
 # ## ##########################################################################
 
-def get_reduced_sets(file='data/reduced_sets.pkl'):
+def get_reduced_sets(file='data/declustered_sets.pkl'):
     """Loads reduced sets of data from a specified pickle file.
 
     This function reads a file containing precomputed reduced sets of data,
