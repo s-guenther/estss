@@ -10,7 +10,7 @@ import scipy.io as sio
 from scipy.interpolate import pchip_interpolate as pchip
 import seaborn as sns
 
-from estss import reduce
+from estss import decluster
 
 
 def n2048set_to_mat(sets, savepath='examples/hydro/ts_neg_2048.mat',
@@ -89,8 +89,8 @@ def _resample_pchip(ts, n):
 def _test_month():
     import os
     os.chdir('/home/sg/estss')
-    from estss import reduce
-    sets = reduce.get_reduced_sets()
+    from estss import decluster
+    sets = decluster.get_reduced_sets()
     ts, _, _, _ = n2048set_to_mat(
         sets,
         savepath='examples/hydro/n2048_month_debug.mat',
@@ -239,7 +239,6 @@ def plot_sobol():
                 error_kw=err_kw1, color=b1, clip_on=False, zorder=1)
         ax.barh(ybot, tot, xerr=tot_err, height=0.4,
                 error_kw=err_kw2, color=b2, clip_on=False, zorder=1)
-
 
     fig.patches.extend(
         [plt.Rectangle(

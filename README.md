@@ -2,14 +2,67 @@
 
 A toolbox to generate a de-clustered, application-independent, semi-artificial
 load profile benchmark set that exposes a broad feature variety and low
-discrepancy within feature space
-
+discrepancy within feature space.
 
 ---
 
-## Description
 
-_tbd_
+## Associated Work
+
+The final declustered data is available at\
+[zenodo](https://TODO/link/to/zenodo)
+
+The associated research paper is available at\
+_\<still in peer review\>_
+
+
+## Key Functionalities and Overview
+
+### Data Preparation
+This component deals with the generation and retrieval of initial time series
+datasets. It is designed to serve as the starting point for any time series
+analysis within the module, ensuring the availability of standardized and
+pre-processed data.
+
+### Manifold Creation
+The submodule dedicated to manifold creation focuses on transforming time
+series datasets through a series of mathematical and signal processing
+techniques. 
+
+### Feature Engineering
+This aspect involves the calculation and analysis of a wide range of
+features from time series data. The submodule utilizes various established
+toolboxes and custom implementations to extract meaningful features from time
+series.
+
+### Dimensionality Reduction
+To manage the complexity of high-dimensional data, this functionality simplifies
+datasets by reducing their dimensionality. The process involves retaining
+critical information and features from the original datasets, ensuring the
+essence of the data is preserved while making it more manageable for further
+processing and analysis.
+
+### Decluster and Optimize
+This component enhances the representation of data in feature space. It focuses
+on declustering and optimizing datasets, which is vital for reducing redundancy
+in data representation and improving the efficiency of data handling and
+analysis.
+
+### Analysis and Visualization
+The module provides tools for exploring and visualizing data distributions,
+correlations, and other analytical aspects of time series data.
+
+
+## Submodules Overview
+
+- `init`: Generation and retrieval of initial time series data.
+- `manifold`: Data transformation through recombination and signal processing.
+- `features`: Feature calculation from time series data.
+- `decluster`: Optimization of feature space distribution.
+- `analyze`: Analysis and visualization of feature distribution.
+- `dimred`: Dimensionality reduction in feature space.
+- `io`: Import/export functionalities for time series data.
+- `util`: General utility functions for data manipulation.
 
 
 ## Requirements
@@ -48,7 +101,43 @@ setup the `venv` with `mamba` as described above and you should be good to go.
 
 ## Getting Started
 
-_tbd_
+The pipeline from initial time series to the published declustered sets is as follows:
+
+    import pickle
+    from estss import *
+    
+    # Load initial time series data
+    init = get_init_ts()
+    
+    # Compute and save manifolded time series
+    mani_neg, mani_posneg, mani_info = compute_manifold_ts()
+    mani_neg.to_pickle('data/manifold_ts_only_neg.pkl')
+    mani_posneg.to_pickle('data/manifold_ts_only_posneg.pkl')
+    
+    # Compute and save features
+    feat_neg, feat_posneg = compute_features()
+    feat_neg.to_pickle('data/manifold_feat_only_neg.pkl')
+    feat_posneg.to_pickle('data/manifold_feat_only_posneg.pkl')
+    
+    # Compute and save declustered sets
+    sets = compute_declustered_sets()
+    with open('data/declustered_sets.pkl', 'wb') as file:
+        pickle.dump(sets, file)
+    
+    # Export data as CSV
+    io.to_csv()
+
+
+## Documentation
+
+For detailed information and usage instructions, refer to the docstrings within
+each submodule and function.
+
+
+## Contributing
+
+Contributions are welcome! If you have suggestions for improvements or want to
+contribute code, please feel free to create an issue or submit a pull request.
 
 
 ## License
@@ -73,18 +162,17 @@ appreciated.
 
 ## Author
 
-ESTSS - Energy System Time Series Suite
+estss - Energy System Time Series Suite\
 Copyright (C) 2023\
 Sebastian Günther\
 sebastian.guenther@ifes.uni-hannover.de
 
-Leibniz Universität Hannover
+Leibniz Universität Hannover\
 Institut für Elektrische Energiesysteme\
 Fachgebiet für Elektrische Energiespeichersysteme
 
-Leibniz University Hannover
+Leibniz University Hannover\
 Institute of Electric Power Systems\
 Electric Energy Storage Systems Section
 
 https://www.ifes.uni-hannover.de/ees.html
-

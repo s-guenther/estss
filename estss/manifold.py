@@ -1,24 +1,53 @@
 #!/usr/bin/env python3
-"""Expand or manifold an initial time series set.
-This includes:
-- recombination:
-  (a) concatenation (b) superposition
-- signal processing chains:
-  chaining the following signal processors: (a) expander (b) compressor
-  (c, d, e) curtailment (top, bottom, mid) (f) time distortion
-  to modify an input time series
-- fix boundary conditions:
-  (a) mean (b) sign (c) initial condition
+"""
 
-Relevant methods in this module:
-    get_expanded_ts()
-    gen_expanded_ts()
+The `manifold.py` submodule focuses on three key areas of transformation:
+recombination, signal processing, and boundary condition adjustments. This
+submodule enables the creation of a manifold of time series by altering initial
+datasets through various mathematical and signal processing techniques.
+
+Key Functionalities:
+--------------------
+1. Recombination:
+   - Concatenation: Merging multiple time series end-to-end.
+   - Superposition: Overlaying and summing multiple time series.
+2. Signal Processing Chains:
+   - Application of sequential signal processing operations, such as expansion,
+     compression, curtailment (top, bottom, mid), and time distortion.
+3. Fixing Boundary Conditions:
+   - Ensuring specific criteria such as mean value, sign, and initial
+     conditions are met.
+
+Main Methods:
+-------------
+- get_manifold_ts():
+  Loads pre-processed manifolded time series data from disk, ensuring they
+  adhere to predefined constraints and formats.
+
+- compute_manifold_ts():
+  Facilitates the computation of manifolded time series from initial datasets.
+  This method applies a series of transformations and recombination processes
+  to create new, derived time series datasets.
+
+Sub-Methods:
+------------
+- recombine(), modify(), fix_constraints():
+  These methods are responsible for the primary transformations within the
+  submodule, performing tasks such as data merging, signal processing, and
+  ensuring data compliance with set constraints.
+
+- verify_constraints():
+  Validates that the processed time series data comply with the set boundary
+  conditions, ensuring the integrity and consistency of the transformations.
+
+Refer to individual function docstrings for more detailed information and usage
+instructions.
 """
 
 # The module is structured as follows
-# - get_expanded_ts()
-# - compute_expanded_ts() mainly invokes:
-#   - expand() mainly invokes:
+# - get_manifold_ts()
+# - compute_manifold_ts() mainly invokes:
+#   - manifold() mainly invokes:
 #     - recombine() mainly invokes:
 #       - _concat_strings()
 #       - _concat()
@@ -31,7 +60,7 @@ Relevant methods in this module:
 #       - _fix_mean()
 #       - _fix_sign()
 #       - _fix_bounds()
-#      - verify_constraints()
+#     - verify_constraints()
 
 from collections import abc
 from copy import copy
@@ -51,9 +80,9 @@ from estss import util
 # ##
 # ## ##########################################################################
 
-def get_expanded_ts(df_files=('data/exp_ts_only_neg.pkl',
-                              'data/exp_ts_only_posneg.pkl')):
-    """Load expanded time series data saved as pickled pandas dataframes.
+def get_manifold_ts(df_files=('data/manifold_ts_only_neg.pkl',
+                              'data/manifold_ts_only_posneg.pkl')):
+    """Load manifolded time series data saved as pickled pandas dataframes.
 
     Loads 2 dataframes, returns as tuple. The first contains only time
     series that are strictly negative valued, the second contains time
@@ -84,13 +113,13 @@ def get_expanded_ts(df_files=('data/exp_ts_only_neg.pkl',
     return [pd.read_pickle(file) for file in df_files]
 
 
-def compute_expanded_ts(df_init='data/init_ts.pkl', seed=42):
-    """Computes expanded time series dataframes from an initial time
+def compute_manifold_ts(df_init='data/init_ts.pkl', seed=42):
+    """Computes manifolded time series dataframes from an initial time
     series dataframe.
 
-    It invokes expand() two times. Once with parameter `kind='only_neg'`,
-    once with `kind=only_posnet`. See expand() for more information. The
-    generated data is automatically saved to disk by expand().
+    It invokes manifold() two times. Once with parameter `kind='only_neg'`,
+    once with `kind=only_posnet`. See manifold() for more information. The
+    generated data is automatically saved to disk by manifold().
 
     Returns a 3-tuple, the first 2 elements are the dataframes, the third is
     a dict with information on how these were created.
@@ -124,13 +153,13 @@ def compute_expanded_ts(df_init='data/init_ts.pkl', seed=42):
         Dict keys are
         recombined_neg, recombined_posneg, modified_neg, modified_posneg
     """
-    print('\n#\n# Compute Expanded Time Series - only negative\n#')
+    print('\n#\n# Compute Manifolded Time Series - only negative\n#')
     df_exp_neg, str_rec_neg, str_mod_neg = \
-        expand(df_init, kind='only_neg', seed=seed)
+        manifold(df_init, kind='only_neg', seed=seed)
 
-    print('\n#\n# Compute Expanded Time Series - only positive/negative\n#')
+    print('\n#\n# Compute Manifolded Time Series - only positive/negative\n#')
     df_exp_posneg, str_rec_posneg, str_mod_posneg = \
-        expand(df_init, kind='only_posneg', seed=seed+10)
+        manifold(df_init, kind='only_posneg', seed=seed+10)
 
     str_combined = dict(recombined_neg=str_rec_neg,
                         recombined_posneg=str_mod_posneg,
@@ -139,9 +168,9 @@ def compute_expanded_ts(df_init='data/init_ts.pkl', seed=42):
     return df_exp_neg, df_exp_posneg, str_combined
 
 
-def expand(df_init='data/init_ts.pkl', kind='only_neg', seed=42,
-           save_to_disk='data/exp_ts'):
-    """Computes an expanded time series data frame from an initial time
+def manifold(df_init='data/init_ts.pkl', kind='only_neg', seed=42,
+             save_to_disk='data/exp_ts'):
+    """Computes a manifolded time series data frame from an initial time
     series dataframe.
 
     It serially performs the following operations:

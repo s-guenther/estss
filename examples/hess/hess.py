@@ -12,7 +12,7 @@ import pandas as pd
 import scipy.io as sio
 import seaborn as sns
 
-from estss import reduce, init, expand, util, features
+from estss import decluster, init, manifold, util, features
 
 
 def export_to_mat():
@@ -30,12 +30,12 @@ def export_to_mat():
     valid = csum_init.apply(lambda x: np.all((x <= 0) & (x >= x.iloc[-1])))
     init_ts = init_ts.loc[:, valid]
     init_ts = init_ts.sample(256, axis=1)
-    init_feat = features.features(init_ts)
+    init_feat = features.features_for_df(init_ts)
 
     # ##
     # ## Reduced Set and Features
     print('# ## Reduced Set')
-    sets = reduce.get_reduced_sets()
+    sets = decluster.get_reduced_sets()
     red_ts = sets['ts'][4096]
     red_feat = sets['features'][4096]
 
@@ -45,7 +45,7 @@ def export_to_mat():
     exp_ts_sets = expand.get_expanded_ts()
     exp_feat_sets = features.get_features()
 
-    # Reindex pos neg feature and ts array with +1e6 (as done by reduce.py)
+    # Reindex pos neg feature and ts array with +1e6 (as done by decluster.py)
     exp_ts_posneg = exp_ts_sets[1]
     exp_ts_posneg.columns += int(1e6)
     exp_ts_sets[1] = exp_ts_posneg

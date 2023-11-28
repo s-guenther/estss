@@ -1,10 +1,27 @@
 #!/usr/bin/env python3
-"""Generate or load the initial data from raw data. Saves and loads
-from disk. This data is the starting point for Superposition + Concatenation
-and modification in the Expansion Step.
-Relevant method are
-    get_init_ts()       to load data
-    _ees_ts()            to generate from ifes-ees raw data"""
+"""
+The `init.py` submodule forms a foundational part of a larger framework focused
+on time series data manipulation and analysis. This submodule is primarily
+concerned with the generation and retrieval of initial time series data, which
+serves as the baseline for subsequent data processing steps, including
+manifolding, feature engineering and declustering.
+
+Primary Functions:
+------------------
+- get_init_ts(df_file='data/init_ts.pkl'):
+    Retrieves initial time series data from a specified pickle file. This data
+    is typically pre-processed and formatted as a pandas DataFrame for further
+    analysis and manipulation.
+
+- _ees_ts(datafile='data/ees_ts.pkl', selectionsfile='data/ees_selections'):
+    Generates initial time series data from confidential IFES-EES raw data. This
+    function processes the raw data based on predefined selections and saves the
+    results for future use. (Note: Functionality is contingent upon the
+    availability of the required raw data and selection files.)
+
+Refer to individual function docstrings for more detailed information and usage
+instructions.
+"""
 
 import random
 import warnings
@@ -90,7 +107,6 @@ def _raw_to_init_from_string(selection, datafile='data/ees_ts.pkl', *,
     dset, start, _, stop = selection.split(' ')
     start, stop = int(start), int(stop)
     data = pd.read_pickle(datafile)
-    return _raw_to_init_fcn(data[dset][0], start, stop)
 
 
 # ## Random selections

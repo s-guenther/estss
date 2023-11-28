@@ -17,20 +17,15 @@ Key Functions:
 - compute_features(ts_list): Computes features for a list of time series
   dataframes by applying the `features()` function to each dataframe in the
   list.
-- features(df_ts, workers, show_warnings, show_progress): Calculates all
+- features_for_df(df_ts, workers, show_warnings, show_progress): Calculates all
   relevant features for each time series in a given dataframe. This function is
   the primary method for converting a mxn time series dataframe (m: number of
   time steps, n: number of time series) into an nxf feature dataframe (n:
   number of time series, f: number of features).
-- single_features(ts, show_progress): Computes a comprehensive set of features
+- features(ts, show_progress): Computes a comprehensive set of features
   for a single time series using various feature extraction libraries and
-  custom implementations. This function is used within `features()` to process
-  individual time series.
-
-The submodule is optimized for handling large datasets typical in time series
-analysis, ensuring efficient computation and versatility in feature extraction
-methodologies. It serves as a crucial component in pre-processing and preparing
-time series data for further analytical tasks.
+  custom implementations. This function is used within `features_for_df()` to
+  process individual time series.
 
 Refer to individual function docstrings for more detailed information and usage
 instructions.
@@ -70,8 +65,8 @@ except FileNotFoundError:
 # ##
 # ## ##########################################################################
 
-def get_features(df_files=('data/exp_feat_only_neg.pkl',
-                           'data/exp_feat_only_posneg.pkl')):
+def get_features(df_files=('data/manifold_feat_only_neg.pkl',
+                           'data/manifold_feat_only_posneg.pkl')):
     """Loads and returns feature dataframes from specified pickle files.
 
     This function retrieves precomputed feature sets from given pickle file
@@ -96,8 +91,8 @@ def get_features(df_files=('data/exp_feat_only_neg.pkl',
     return [pd.read_pickle(file) for file in df_files]
 
 
-def compute_features(ts_list=('data/exp_ts_only_neg.pkl',
-                              'data/exp_ts_only_posneg.pkl')):
+def compute_features(ts_list=('data/manifold_ts_only_neg.pkl',
+                              'data/manifold_ts_only_posneg.pkl')):
     """Computes features for each time series dataframe in a given list of
     files.
 
@@ -120,10 +115,11 @@ def compute_features(ts_list=('data/exp_ts_only_neg.pkl',
     """
 
     df_ts_list = (pd.read_pickle(file) for file in ts_list)
-    return [features(df_ts) for df_ts in df_ts_list]
+    return [features_for_df(df_ts) for df_ts in df_ts_list]
 
 
-def features(df_ts, workers=8, show_warnings='ignore', show_progress=False):
+def features_for_df(df_ts,
+                    workers=8, show_warnings='ignore', show_progress=False):
     """Calculate all relevant features for all time series of the pandas
     dataframe.
 
@@ -178,10 +174,10 @@ def features(df_ts, workers=8, show_warnings='ignore', show_progress=False):
 def _df_features(df, show_progress=False):
     """Helper Function for multiprocessing in `features()` map function to
     avoid the introduction of lambdas (not pickleable)"""
-    return df.apply(single_features, args=(show_progress,))
+    return df.apply(features, args=(show_progress,))
 
 
-def single_features(ts, show_progress=False):
+def features(ts, show_progress=False):
     """Calculate all relevant features for a single time series.
 
     Gets a (m,)-np.array() time series, m being the number of time steps and

@@ -1,17 +1,17 @@
 #!/usr/bin/env python3
 """
 This module provides functionalities to export and import the declustered data
-sets related to the Energy System Time Series Suite. It allows for efficient
-handling of time series data, their features, and associated information in CSV
-format. The module includes functions to export data sets to CSV files, import
-them back into Python environments, and validate the consistency of these
-operations.
+sets related to the Energy System Time Series Suite. The module includes
+functions to export data sets to CSV files, import them back into Python, and
+validate the consistency of these operations.
 
 Key Functions:
 - to_csv: Exports data sets to CSV files, organizing them by field names and
   sizes.
 - from_csv: Imports data sets from CSV files, reconstructing the dictionary of
   data sets.
+
+Helper functions:
 - _export_readme: Exports a predefined README markdown file to a specified
   path.
 - _assert_equal: Validates that data written to and read from CSV files are
@@ -24,7 +24,7 @@ import itertools as it
 
 import pandas as pd
 
-from estss import reduce
+from estss import decluster
 
 
 _README = """Energy System Time Series Suite - Data Archive
@@ -39,7 +39,8 @@ For detailed information, please refer to the corresponding GitHub project:\\
 [ESTSS GitHub Project](https://github.com/s-guenther/estss/)
 
 For associated research, see the paper:\\
-[Research Paper Link](https://doi.org/10.TODO/TODO/)
+[Research Paper Link](https://doi.org/10.TODO/TODO/)\\
+(_\<still in peer review\>_)
 
 Data is provided in .csv format. The GitHub project includes a Python function
 to load this data as a dictionary of pandas data frames.
@@ -127,15 +128,15 @@ def to_csv(sets=None, savepath=_SAVEPATH):
 
     This function iterates over the specified data sets and their corresponding
     sizes, exporting each as a CSV file to the designated save path. If no
-    sets are provided, it defaults to fetching reduced sets of data.
+    sets are provided, it defaults to fetching the declustered sets of data.
 
     Parameters
     ----------
     sets : dict, optional:
         A dictionary of data sets to be exported. Each key corresponds
         to a field name, and each value is a dictionary where keys are sizes
-        and values are data frames. If None, reduced data sets are obtained by
-        default.
+        and values are data frames. If None, the declustered data sets are
+        obtained by default.
     savepath : str
         The base path where the CSV files will be saved. Each file is named
         following the pattern '{field}_{size}.csv'.
@@ -146,7 +147,7 @@ def to_csv(sets=None, savepath=_SAVEPATH):
     Note - Ensure that the specified save path exists and is writable.
     """
     if sets is None:
-        sets = reduce.get_reduced_sets()
+        sets = decluster.get_declustered_sets()
     fields = _FIELDNAMES
     sizes = _SIZES
     for field, size in it.product(fields, sizes):
@@ -199,7 +200,7 @@ def _assert_equal(sets=None, savepath=_SAVEPATH):
     with `from_csv()`. Asserts the the original data and loaded data are
     equal."""
     if sets is None:
-        sets = reduce.get_reduced_sets()
+        sets = decluster.get_declustered_sets()
     to_csv(sets)
     sets_read = from_csv(savepath)
     fields = _FIELDNAMES

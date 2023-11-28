@@ -9,7 +9,7 @@ from matplotlib import pyplot as plt
 import matplotlib as mpl
 from matplotlib import patheffects as pe
 
-from estss import reduce, features, init
+from estss import decluster, features, init
 
 
 def plot_nd_hist_matrix(calc=False):
@@ -26,7 +26,7 @@ def plot_nd_hist_matrix(calc=False):
         )
 
         init_space = large_space.iloc[:init_feat.shape[0], :]
-        exp_space, _ = reduce.dimensional_reduced_feature_space(
+        exp_space, _ = decluster.dimensional_reduced_feature_space(
             exp_feat, plot=False
         )
         init_space.to_pickle('data/init_space.pkl')
@@ -35,7 +35,7 @@ def plot_nd_hist_matrix(calc=False):
         init_space = pd.read_pickle('data/init_space.pkl')
         exp_space = pd.read_pickle('data/exp_space.pkl')
 
-    set_spaces = reduce.get_reduced_sets()['norm_space']
+    set_spaces = decluster.get_reduced_sets()['norm_space']
 
     # ## create diagram
     fig, ax = plt.subplot_mosaic(
@@ -69,7 +69,7 @@ def plot_nd_hist_matrix(calc=False):
         a.spines['right'].set_visible(False)
         a.spines['bottom'].set_visible(False)
         a.spines['left'].set_visible(False)
-        reduce._plot_nd_hist(  # noqa
+        decluster.plot_nd_hist(  # noqa
             set_,
             bins=10,
             ax=a,
@@ -82,8 +82,8 @@ def plot_nd_hist_matrix(calc=False):
         a.get_yaxis().set_ticks([])
         lbl = lbl if lbl is not 'expanded' else 'manif.'
         ttl_lbl = (f'({letter}) {lbl} set, '
-                   f'$h_{{14,10}}$ = {reduce._heterogeneity(set_):.3f}' # noqa
-        )
+                   f'$h_{{14,10}}$ = {reduce.heterogeneity(set_):.3f}'  # noqa
+                   )
         a.set_title(ttl_lbl, {'va': 'top'}, loc='left', y=-0.13, fontsize=8)
 
     #  make extra info axes
@@ -108,7 +108,7 @@ def plot_n32_ts(yspace=2.0, xspace=100, which='results', **kwargs):
     os.chdir('/home/sg/estss/')
 
     if which == 'results':
-        sets = reduce.get_reduced_sets()
+        sets = decluster.get_reduced_sets()
         ts_set = sets['ts'][64].iloc[:, 32:]
     elif which == 'init':
         ts_set = init.get_init_ts().sample(32, axis='columns', random_state=3)
@@ -173,8 +173,9 @@ def plot_corr_mat(calc=False):
     if calc:
         df_feat_list = features.get_features()
         df_feat = pd.concat(df_feat_list, axis=0, ignore_index=True)
-        fspace = reduce._raw_feature_array_to_feature_space(df_feat)  # noqa
-        corr_mat, info = reduce._hierarchical_corr_mat(fspace)  # noqa
+        fspace = decluster.raw_feature_array_to_feature_space(
+            df_feat, special_treatment=True)
+        corr_mat, info = decluster.hierarchical_corr_mat(fspace)  # noqa
         with open('/home/sg/estss/data/hier_corr_data.pkl', 'wb') as file:
             pickle.dump((corr_mat, info), file)
     else:
@@ -186,7 +187,7 @@ def plot_corr_mat(calc=False):
     ax[0].set_position((0, 0.4/3.9, 1, 3.5/3.9))
     ax[1].set_position((0, 0.050, 1, 0.03))
     fig.set_size_inches(3.5, 3.9)
-    reduce._plot_hierarchical_corr_mat(  # noqa
+    decluster.plot_hierarchical_corr_mat(  # noqa
         corr_mat, info,
         clust_color='lightsalmon', ax=ax[0], write_clust_names=False,
         selected_feat=reduce._REPRESENTATIVES,  # noqa
