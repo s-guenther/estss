@@ -90,7 +90,7 @@ def _test_month():
     import os
     os.chdir('/home/sg/estss')
     from estss import decluster
-    sets = decluster.get_reduced_sets()
+    sets = decluster.get_declustered_sets()
     ts, _, _, _ = n2048set_to_mat(
         sets,
         savepath='examples/hydro/n2048_month_debug.mat',
@@ -152,7 +152,7 @@ def import_from_mat_and_merge():
     seasonal = seasonal['Mix_sol_arr_PS_9_0_1']
     yearly = yearly['Mix_sol_arr_PS_9_0_1']
 
-    sets = reduce.get_reduced_sets()
+    sets = decluster.get_declustered_sets()
     feat = sets['features'][4096].iloc[:2048, :]
 
     monthly = pd.DataFrame(monthly, index=feat.index, columns=_COLNAMES)
@@ -197,11 +197,11 @@ def plot_sobol():
 
     fig, axs = plt.subplot_mosaic(
         [['orig', 'new']],
-        gridspec_kw=dict(top=0.92, bottom=0.11, left=0.33, right=0.999,
+        gridspec_kw=dict(top=0.92, bottom=0.11, left=0.345, right=0.999,
                          wspace=0.15),
         width_ratios=[1, 1],
     )
-    fig.set_size_inches(3.5, 3.5)
+    fig.set_size_inches(13.12/2.54, 2.7)
 
     ytop = np.arange(9)[::-1] + 0.2
     ybot = np.arange(9)[::-1] - 0.2
@@ -251,11 +251,11 @@ def plot_sobol():
     axs['new'].set_yticklabels([])
     axs['orig'].set_yticks(ytop - 0.2)
     axs['orig'].set_yticklabels([
-        'Availability of\nRenewable Energy', 'Interest Rate', 'CAPEX RES',
-        'CAPEX Electrolyzer',
-        'Spec Energy Con-\nsump. of Electrolyzer\nat Nominal Power',
-        'CAPEX Storage\nand Compressor', 'Grid Electricity Price',
-        'Grid Electricity\nEmission Intensity', 'Demand\nCharacteristic'],
+        'Availability of Renewable Energy ', 'Interest Rate ', 'CAPEX RES ',
+        'CAPEX Electrolyzer ',
+        'Specific Energy Consumption of \nElectrolyzer at Nominal Power ',
+        'CAPEX Storage and Compressor ', 'Grid Electricity Price ',
+        'Grid Electricity Emission Intensity ', 'Demand Characteristic '],
         size=7,
     )
     axs['orig'].tick_params(axis='y', which='major', pad=5)

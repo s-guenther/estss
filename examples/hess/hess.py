@@ -35,14 +35,14 @@ def export_to_mat():
     # ##
     # ## Reduced Set and Features
     print('# ## Reduced Set')
-    sets = decluster.get_reduced_sets()
+    sets = decluster.get_declustered_sets()
     red_ts = sets['ts'][4096]
     red_feat = sets['features'][4096]
 
     # ##
     # ## Expanded Set and Features
     print('# ## Expanded Set')
-    exp_ts_sets = expand.get_expanded_ts()
+    exp_ts_sets = manifold.get_manifold_ts()
     exp_feat_sets = features.get_features()
 
     # Reindex pos neg feature and ts array with +1e6 (as done by decluster.py)
@@ -208,11 +208,11 @@ def plot_compare_init_exp_red():
     lightblue = blues[1, :]
     fig, ax = plt.subplot_mosaic(
         [['n64', 'init', 'exp']],
-        gridspec_kw=dict(top=0.999, bottom=0.2, left=0.06, right=0.999,
+        gridspec_kw=dict(top=0.999, bottom=0.15, left=0.04, right=0.999,
                          wspace=0.12, hspace=0.35),
         width_ratios=[1, 1, 1],
     )
-    fig.set_size_inches(3.5, 1.4)
+    fig.set_size_inches(13.12/2.54, 1.7)
 
     # ax['n64'].plot([0, 1], [1, 0], color=lightblue)
     # ax['n64'].autoscale(tight=True)

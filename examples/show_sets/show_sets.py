@@ -9,7 +9,7 @@ from matplotlib import pyplot as plt
 import matplotlib as mpl
 from matplotlib import patheffects as pe
 
-from estss import decluster, features, init
+from estss import decluster, features, init, dimred, analyze
 
 
 def plot_nd_hist_matrix(calc=False):
@@ -18,34 +18,33 @@ def plot_nd_hist_matrix(calc=False):
     # ## calc or load data
     if calc:
         # Calculate and save dimensional reduced spaces
-        exp_feat = pd.concat(features.get_features(), axis=0, ignore_index=True)
+        exp_feat = pd.concat(features.get_features(),
+                             axis=0, ignore_index=True)
         init_feat = pd.read_pickle('data/init_feat.pkl')
-        large_feat = pd.concat([init_feat, exp_feat], axis=0, ignore_index=True)
-        large_space, _ = reduce.dimensional_reduced_feature_space(
-            large_feat, plot=False
-        )
+        large_feat = pd.concat([init_feat, exp_feat],
+                               axis=0, ignore_index=True)
+        large_space, _ = dimred.dimensional_reduced_feature_space(large_feat)
 
         init_space = large_space.iloc[:init_feat.shape[0], :]
-        exp_space, _ = decluster.dimensional_reduced_feature_space(
-            exp_feat, plot=False
-        )
+        exp_space, _ = dimred.dimensional_reduced_feature_space(exp_feat)
         init_space.to_pickle('data/init_space.pkl')
         exp_space.to_pickle('data/exp_space.pkl')
     else:
         init_space = pd.read_pickle('data/init_space.pkl')
-        exp_space = pd.read_pickle('data/exp_space.pkl')
+        exp_space = pd.read_pickle('data/manifold_space.pkl')
 
-    set_spaces = decluster.get_reduced_sets()['norm_space']
+    set_spaces = decluster.get_declustered_sets()['norm_space']
 
     # ## create diagram
     fig, ax = plt.subplot_mosaic(
-        [['initial', 'expanded'], ['n4096', 'n1024'], ['n256', 'n64'],
-         ['cmap', 'cmap']],
-        gridspec_kw=dict(top=1, bottom=0.04, left=0, right=1, wspace=0.12,
+        [['initial', 'expanded', 'n4096'],
+         ['n1024', 'n256', 'n64'],
+         ['empty', 'cmap', 'cmap']],
+        gridspec_kw=dict(top=1, bottom=0.00, left=0, right=1, wspace=0.10,
                          hspace=0.35),
-        height_ratios=[1, 1, 1, 0.14],
+        height_ratios=[1, 1, 0.10],
     )
-    fig.set_size_inches(8.9/2.54, 11/2.54)
+    fig.set_size_inches(13.12/2.54, 7/2.54)
 
     # make cmap
     # cmap = mpl.colors.ListedColormap(
@@ -69,7 +68,7 @@ def plot_nd_hist_matrix(calc=False):
         a.spines['right'].set_visible(False)
         a.spines['bottom'].set_visible(False)
         a.spines['left'].set_visible(False)
-        decluster.plot_nd_hist(  # noqa
+        analyze.plot_nd_hist(
             set_,
             bins=10,
             ax=a,
@@ -80,11 +79,14 @@ def plot_nd_hist_matrix(calc=False):
         )
         a.get_xaxis().set_ticks([])
         a.get_yaxis().set_ticks([])
-        lbl = lbl if lbl is not 'expanded' else 'manif.'
+        lbl = lbl if lbl != 'expanded' else 'manif.'
         ttl_lbl = (f'({letter}) {lbl} set, '
-                   f'$h_{{14,10}}$ = {reduce.heterogeneity(set_):.3f}'  # noqa
+                   f'$h_{{14,10}}$ = {analyze.heterogeneity(set_):.3f}'  # noqa
                    )
         a.set_title(ttl_lbl, {'va': 'top'}, loc='left', y=-0.13, fontsize=8)
+
+    # disable empty axes
+    ax['empty'].set_axis_off()
 
     #  make extra info axes
     ax['cmap'].matshow(np.array([[1, 4, 6, 10, 14, 17, 20]])/100,
@@ -99,7 +101,7 @@ def plot_nd_hist_matrix(calc=False):
     ax['cmap'].axis('off')
     ax['cmap'].set_title(
         f'Relative frequency',
-        loc='left', y=-1.5, fontsize=8
+        loc='left', y=-0.5, x=-0.32, fontsize=8
     )
     return fig, ax
 
@@ -108,7 +110,7 @@ def plot_n32_ts(yspace=2.0, xspace=100, which='results', **kwargs):
     os.chdir('/home/sg/estss/')
 
     if which == 'results':
-        sets = decluster.get_reduced_sets()
+        sets = decluster.get_declustered_sets()
         ts_set = sets['ts'][64].iloc[:, 32:]
     elif which == 'init':
         ts_set = init.get_init_ts().sample(32, axis='columns', random_state=3)
@@ -116,7 +118,7 @@ def plot_n32_ts(yspace=2.0, xspace=100, which='results', **kwargs):
         raise ValueError(f'Invalid value which = {which}')
 
     fig, ax = plt.subplots(1, 1)
-    fig.set_size_inches(3.5, 12/2.54)
+    fig.set_size_inches(13.12/2.54, 12/2.54)
     ax.set_position([0, 0, 1, 1])
     # colormap = plt.get_cmap('Paired')(range(2))
     # ax.set_prop_cycle(cycler.cycler(color=colormap))
@@ -173,7 +175,7 @@ def plot_corr_mat(calc=False):
     if calc:
         df_feat_list = features.get_features()
         df_feat = pd.concat(df_feat_list, axis=0, ignore_index=True)
-        fspace = decluster.raw_feature_array_to_feature_space(
+        fspace = dimred.raw_feature_array_to_feature_space(
             df_feat, special_treatment=True)
         corr_mat, info = decluster.hierarchical_corr_mat(fspace)  # noqa
         with open('/home/sg/estss/data/hier_corr_data.pkl', 'wb') as file:
@@ -183,16 +185,16 @@ def plot_corr_mat(calc=False):
             corr_mat, info = pickle.load(file)
 
     # Process data
-    fig, ax = plt.subplots(2, 1)
-    ax[0].set_position((0, 0.4/3.9, 1, 3.5/3.9))
-    ax[1].set_position((0, 0.050, 1, 0.03))
-    fig.set_size_inches(3.5, 3.9)
-    decluster.plot_hierarchical_corr_mat(  # noqa
+    fig, ax = plt.subplots(1, 2)
+    ax[0].set_position((0, 0, 4.2/5.165, 1))
+    ax[1].set_position((4.5/5.165, 0, 0.03, 1))
+    fig.set_size_inches(5.165, 4.2)
+    analyze.plot_hierarchical_corr_mat(  # noqa
         corr_mat, info,
         clust_color='lightsalmon', ax=ax[0], write_clust_names=False,
-        selected_feat=reduce._REPRESENTATIVES,  # noqa
+        selected_feat=dimred._REPRESENTATIVES,  # noqa
         cbar_ax=ax[1],
-        cbar_kws=dict(orientation='horizontal')
+        cbar_kws=dict(orientation='vertical')
     )
     ax[1].tick_params(axis='both', labelsize=8)
     return fig, ax
