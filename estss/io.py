@@ -38,9 +38,9 @@ distribution within this space.
 For detailed information, please refer to the corresponding GitHub project:\\
 [ESTSS GitHub Project](https://github.com/s-guenther/estss/)
 
-For associated research, see the paper:\\
-[Research Paper Link](https://doi.org/10.5281/zenodo.10213145)\\
-(_\<still in peer review\>_)
+For associated research, see:\\
+[Preprint](https://doi.org/10.21203/rs.3.rs-3786051/v1)\\
+[Data](https://doi.org/10.5281/zenodo.10213145)\\
 
 Data is provided in .csv format. The GitHub project includes a Python function
 to load this data as a dictionary of pandas data frames.
