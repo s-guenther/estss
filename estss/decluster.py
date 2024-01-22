@@ -186,13 +186,13 @@ def compute_declustered_sets(df_feat_list=None, df_ts_list=None, seed=1340):
     sets_both = [pd.concat([n, pn]) for n, pn in zip(sets_neg, sets_posneg)]
     df_ts_merged = pd.concat(df_ts_list, axis=1, ignore_index=False)
     # map sets
-    sets = _map_sets(sets_both, df_feat_merged, df_ts_merged)
+    sets = map_sets(sets_both, df_feat_merged, df_ts_merged)
 
     # return sets_both, df_feat_merged, df_ts_merged
     return sets
 
 
-def _map_sets(norm_sets, df_feat, df_ts):
+def map_sets(norm_sets, df_feat, df_ts):
     """Maps normalized sets to corresponding feature and time series data.
 
     This function creates mappings between normalized sets, features, and time
@@ -373,14 +373,22 @@ def _sort_sets(in_sets):
         smaller_sets = sets[ii:]
         for jj, sset in enumerate(smaller_sets):
             set_.loc[sset.index, 'set_cluster'] = ii + jj + 1
-        set_['mean_cluster'] = pd.cut(set_['mean'],
+        # set_['mean_cluster'] = pd.cut(set_['mean'],
+        #                               bins=np.linspace(0, 1, 11),
+        #                               labels=range(10),
+        #                               include_lowest=True)
+        # set_.sort_values(by=['set_cluster', 'mean_cluster', 'iqr', 'ind'],
+        #                  ascending=[False, False, True, True],
+        #                  inplace=True)
+        # sets[ii] = set_.drop(columns=['set_cluster', 'mean_cluster', 'ind'])
+        set_['skew_cluster'] = pd.cut(set_['share_below_mean'],
                                       bins=np.linspace(0, 1, 11),
                                       labels=range(10),
                                       include_lowest=True)
-        set_.sort_values(by=['set_cluster', 'mean_cluster', 'iqr', 'ind'],
-                         ascending=[False, False, True, True],
+        set_.sort_values(by=['set_cluster', 'skew_cluster', 'ind'],
+                         ascending=[False, False, True],
                          inplace=True)
-        sets[ii] = set_.drop(columns=['set_cluster', 'mean_cluster', 'ind'])
+        sets[ii] = set_.drop(columns=['set_cluster', 'skew_cluster', 'ind'])
     return sets
 
 
@@ -525,7 +533,7 @@ def _uniform_set(n, dim, seed=None):
     return halton.random(n)
 
 
-def _find_nearest(large, small, distance=2.0, rm_outliers=True,
+def _find_nearest(large, small, distance=2.0, rm_outliers=False,
                   rm_duplicates=True, leafsize=None, workers=-1):
     """Finds the nearest points in one dataframe to each point in another
     dataframe.

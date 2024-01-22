@@ -73,7 +73,8 @@ _REPRESENTATIVES = (
 )
 
 
-def dimensional_reduced_feature_space(df_feat, choose_dim=_REPRESENTATIVES):
+def dimensional_reduced_feature_space(df_feat, choose_dim=_REPRESENTATIVES,
+                                      **hc_kw):
     """Reduces the dimensionality of a feature space with the help of a
     hierarchical correlation matrix.
 
@@ -110,7 +111,7 @@ def dimensional_reduced_feature_space(df_feat, choose_dim=_REPRESENTATIVES):
     """
     fspace = raw_feature_array_to_feature_space(df_feat,
                                                 special_treatment=True)
-    corr_mat, cinfo = hierarchical_corr_mat(fspace)
+    corr_mat, cinfo = hierarchical_corr_mat(fspace, **hc_kw)
     if choose_dim is None:
         choose_dim = get_first_name_per_cluster(cinfo['cluster'])
     fspace2 = fspace[list(choose_dim)]
@@ -155,12 +156,9 @@ def raw_feature_array_to_feature_space(df_feat, special_treatment=False):
         fspace = _prune_feature_space(df_feat)
     else:
         fspace = df_feat
-    fspace = (
-        fspace
-        .apply(_outlier_robust_sigmoid, raw=True)
-        .apply(_curtail_at_whiskers, raw=True)
-        .apply(util.norm_min_max, raw=True)
-    )
+    fspace = fspace.apply(_outlier_robust_sigmoid, raw=True)
+    fspace = fspace.apply(_curtail_at_whiskers, raw=True)
+    fspace = fspace.apply(util.norm_min_max, raw=True)
     if special_treatment:
         fspace = _manually_repair_dfa(fspace)
     return fspace
@@ -196,6 +194,7 @@ def _prune_feature_space(df_feat, to_exclude=_FEATURES_TO_EXCLUDE):
     features dataframe `df_feat`. Default excluded features are defined in
     `_FEATURES_TO_EXCLUDE` and are only excluded for dimensionality
     reduction, but are present in the final analysis"""
+    df_feat = copy.copy(df_feat)
     return df_feat.drop(list(to_exclude), axis='columns')
 
 
@@ -300,6 +299,7 @@ def hierarchical_corr_mat(df_feat, threshold=0.4, method=_modified_pearson,
     corr_mat = df_feat.corr(method=method, numeric_only=True)
     dissim = 1 - abs(corr_mat)
     dissim[dissim < 0] = 0
+    dissim[np.isnan(dissim)] = 0
     link = linkage(squareform(dissim), method=linkmethod,
                    optimal_ordering=True)
     link[link < 0] = 0

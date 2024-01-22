@@ -89,7 +89,8 @@ Pipeline from initial time series to declustered set:
 Refer to individual submodule and function docstrings for detailed information
 and usage instructions.
 """
-from estss import init, manifold, decluster, features, io, util, analyze
+from estss import (init, manifold, decluster, features, io, util, analyze,
+                   dimred, custom)
 
 from .init import get_init_ts
 from .manifold import get_manifold_ts, compute_manifold_ts

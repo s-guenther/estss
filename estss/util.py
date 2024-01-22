@@ -16,6 +16,8 @@ Utility Functions Include:
 Refer to individual function docstrings for more detailed information and usage
 instructions.
 """
+import copy
+
 import numpy as np
 import pandas as pd
 import scipy.stats
@@ -79,6 +81,7 @@ def norm_zscore(ts):
 
 def norm_min_max(feat_vec):
     """Normalizes a vector `feat_vec` to the range of [0, 1]"""
-    feat_vec -= np.min(feat_vec)
-    feat_vec /= np.max(feat_vec)
-    return feat_vec
+    vec = copy.copy(feat_vec)
+    vec -= np.min(vec)
+    vec /= np.max(vec)
+    return vec
