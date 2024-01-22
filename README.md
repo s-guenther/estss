@@ -11,9 +11,8 @@ discrepancy within feature space.
 
 The final declustered data is available at\
 https://doi.org/10.5281/zenodo.10213145 \
-The associated research paper is available as a preprint at\
-https://doi.org/10.21203/rs.3.rs-3786051/v1
-
+The associated research paper is available at\
+https://doi.org/10.1186/s42162-024-00304-8
 
 
 ## Key Functionalities and Overview

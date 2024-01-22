@@ -39,7 +39,7 @@ For detailed information, please refer to the corresponding GitHub project:\\
 [ESTSS GitHub Project](https://github.com/s-guenther/estss/)
 
 For associated research, see:\\
-[Preprint](https://doi.org/10.21203/rs.3.rs-3786051/v1)\\
+[Paper](https://doi.org/10.1186/s42162-024-00304-8)\\
 [Data](https://doi.org/10.5281/zenodo.10213145)\\
 
 Data is provided in .csv format. The GitHub project includes a Python function
