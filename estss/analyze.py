@@ -74,6 +74,9 @@ def plot_df_ts(df_ts, n=128, which='head', grid=(8, 4), ylim=(-1, 1),
     grid : 2-element iterable, default: (8, 4)
         2-element vector [rows, cols] Time series are plotted into a grid of
         subplots, defines the dimension of the subplotgrid.
+        CAUTION FIXME: the grid tuple values you pass must be >1 , i.e., (2, 2)
+        is the smallest possible grid size. (1, n) or (n, 1) will result in an
+        indexing error
     ylim : 2-element iterable, default: (-1, 1)
         y-limits of the axis, if None, determine automatically
     **kwargs : dict()
@@ -102,6 +105,7 @@ def plot_df_ts(df_ts, n=128, which='head', grid=(8, 4), ylim=(-1, 1),
         df = df_ts
 
     n_ts = df.columns.size
+    len_ts = df.index.size
     n_grid = grid[0]*grid[1]
     n_figs = (n_ts - 1)//n_grid + 1
     figs = []
@@ -110,19 +114,19 @@ def plot_df_ts(df_ts, n=128, which='head', grid=(8, 4), ylim=(-1, 1),
     for i_fig in range(n_figs):
         fig, ax = plt.subplots(*grid)
         plt.setp(ax, 'frame_on', False)
-        for isig, (k, l) in enumerate(np.ndindex(*grid)):
+        for isig, index in enumerate(np.ndindex(*grid)):
             isig += n_grid*i_fig
             if isig < n_ts:
-                ax[k, l].plot([0, 1000], [0, 0], color='gray')
-                ax[k, l].plot(df.iloc[:, isig], **kwargs)
-                ax[k, l].text(0, 1, str(df.columns[isig]),
-                              ha='left', va='top',
-                              transform=ax[k, l].transAxes)
-            ax[k, l].set_xticks([])
-            ax[k, l].set_yticks([])
+                ax[index].plot([0, len_ts-1], [0, 0], color='gray')
+                ax[index].plot(df.iloc[:, isig], **kwargs)
+                ax[index].text(0, 1, str(df.columns[isig]),
+                               ha='left', va='top',
+                               transform=ax[index].transAxes)
+            ax[index].set_xticks([])
+            ax[index].set_yticks([])
             if ylim:
-                ax[k, l].set_ylim(ylim)
-            ax[k, l].grid('off')
+                ax[index].set_ylim(ylim)
+            ax[index].grid('off')
         figs.append(fig)
         axs.append(ax)
 
