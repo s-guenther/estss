@@ -90,7 +90,7 @@ Refer to individual submodule and function docstrings for detailed information
 and usage instructions.
 """
 from estss import (init, manifold, decluster, features, io, util, analyze,
-                   dimred, custom)
+                   dimred)
 
 from .init import get_init_ts
 from .manifold import get_manifold_ts, compute_manifold_ts
