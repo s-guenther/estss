@@ -103,7 +103,16 @@ def _make_concat_def(nts, n_days=(1, 7)):
 
 
 def _concat_single(daystarts, daylens, df_ts):
-    pass
+    ts_concat = np.zeros((8760,))
+    loop_idx = 0
+    for ds, dl, (_, ts) in zip(daystarts, daylens, df_ts.items()):
+        hl = dl*24
+        hs = dl*24
+        s_idx, e_idx = hs, hs + hl
+        ts_section = ts[s_idx:e_idx]
+        ts_concat[loop_idx:loop_idx+hl] = ts_section
+        loop_idx += hl
+    return estss.util.norm_maxabs(ts_concat)
 
 
 
