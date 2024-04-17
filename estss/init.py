@@ -24,6 +24,7 @@ instructions.
 """
 
 import random
+from pathlib import Path
 import warnings
 
 import numpy as np
@@ -31,8 +32,10 @@ import pandas as pd
 
 from estss import util
 
+_DATAPATH = Path(__file__).parent.parent / 'data'
 
-def get_init_ts(df_file='data/init_ts.pkl'):
+
+def get_init_ts(df_file=_DATAPATH / 'init_ts.pkl':
     """Load initial time series data saved as a pickled pandas dataframe.
 
     The dataframe is an nxm array with m being the number of time series and n
@@ -80,8 +83,12 @@ def _single_raw_to_init(raw_ts, start, stop, endpoint=False, samples=1000):
     return init
 
 
-def _ees_ts(datafile='data/ees_ts.pkl', selectionsfile='data/ees_selections',
-            *, _raw_to_init_fcn=_single_raw_to_init):
+def _ees_ts(
+    datafile=_DATAPATH / 'ees_ts.pkl',
+    selectionsfile=_DATAPATH / 'ees_selections',
+    *,
+    _raw_to_init_fcn=_single_raw_to_init
+):
     """Loads the ifes-ees confidential data, extracts sections and saves
     to data/init.pkl.
     Does only work if raw data and selection file is available."""
@@ -97,7 +104,7 @@ def _ees_ts(datafile='data/ees_ts.pkl', selectionsfile='data/ees_selections',
     return pd.DataFrame(ts_array)
 
 
-def _raw_to_init_from_string(selection, datafile='data/ees_ts.pkl', *,
+def _raw_to_init_from_string(selection, datafile=_DATAPATH / 'ees_ts.pkl', *,
                              _raw_to_init_fcn=_single_raw_to_init):
     """Wrapper around _single_raw_to_init(). Which time series and start and
     stop are defined in the `selection` string in the format
@@ -112,10 +119,10 @@ def _raw_to_init_from_string(selection, datafile='data/ees_ts.pkl', *,
 # ## Random selections
 
 def _gen_and_append_rand_selections(
-        datafile='data/ees_ts.pkl',
-        selectionsfile='data/ees_selections_manual',
+        datafile=_DATAPATH / 'ees_ts.pkl',
+        selectionsfile=_DATAPATH / 'ees_selections_manual',
         deviation=0.3, n_final=2048, seed=1,
-        save_to_disk='data/ees_selections'):
+        save_to_disk=_DATAPATH / 'ees_selections'):
     """Generates `n_final` selection strings in the format
     '<ts_name> <start> - <stop>'
     and saves them to the file `save_to_disk`

@@ -111,7 +111,9 @@ Institute of Electric Power Systems\\
 Electric Energy Storage Systems Section
 """
 
-_SAVEPATH = 'data/csvexport/'
+from pathlib import Path
+
+_SAVEPATH = Path(__file__).parent.parent / 'data' / 'csvexport/'
 _FIELDNAMES = ['features', 'ts', 'norm_space', 'info']
 _SIZES = [4096, 1024, 256, 64]
 

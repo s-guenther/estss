@@ -39,6 +39,8 @@ Refer to individual function docstrings for more detailed information and usage
 instructions.
 """
 
+from pathlib import Path
+
 from matplotlib import pyplot as plt
 import matplotlib.colors as mcolors
 from matplotlib.patches import Rectangle
@@ -153,7 +155,10 @@ def _plot_sub_in_ts(ts, start, stop, endpoint=False, samples=1000):
     plt.legend(['Original', 'PChip'])
 
 
-def _plot_sub_in_ts_from_string(selection, datafile='data/ees_ts.pkl'):
+_DATAFILE = Path(__file__).parent.parent / 'data' / 'ees_ts.pkl'
+
+
+def _plot_sub_in_ts_from_string(selection, datafile=_DATAFILE):
     """Same as `_plot_sub_in_ts()`, but takes a selection string in the format
     '<ts_name> <start> - <stop> as input.'
     For this, the raw data as well as the selection file must be available."""

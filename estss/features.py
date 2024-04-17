@@ -32,6 +32,7 @@ instructions.
 """
 
 from functools import partial
+from pathlib import Path
 import warnings
 from multiprocessing import Pool
 
@@ -54,10 +55,8 @@ from estss import util
 # Df has 11 columns:
 # ID IDtool orig_name rectified_name use norm_in norm_out comment
 # description parse_info
-try:
-    _DF_FEAT = pd.read_csv('data/feat_tool.csv', delimiter=';')
-except FileNotFoundError:
-    _DF_FEAT = pd.read_csv('../data/feat_tool.csv', delimiter=';')
+_DATAPATH = Path(__file__).parent.parent / 'data'
+_DF_FEAT = pd.read_csv(_DATAPATH / 'feat_tool.csv', delimiter=';')
 
 
 # ##
@@ -65,8 +64,8 @@ except FileNotFoundError:
 # ##
 # ## ##########################################################################
 
-def get_features(df_files=('data/manifold_feat_only_neg.pkl',
-                           'data/manifold_feat_only_posneg.pkl')):
+def get_features(df_files=(_DATAPATH / 'manifold_feat_only_neg.pkl',
+                           _DATAPATH / 'manifold_feat_only_posneg.pkl')):
     """Loads and returns feature dataframes from specified pickle files.
 
     This function retrieves precomputed feature sets from given pickle file
@@ -91,8 +90,8 @@ def get_features(df_files=('data/manifold_feat_only_neg.pkl',
     return [pd.read_pickle(file) for file in df_files]
 
 
-def compute_features(ts_list=('data/manifold_ts_only_neg.pkl',
-                              'data/manifold_ts_only_posneg.pkl')):
+def compute_features(ts_list=(_DATAPATH / 'manifold_ts_only_neg.pkl',
+                              _DATAPATH / 'manifold_ts_only_posneg.pkl')):
     """Computes features for each time series dataframe in a given list of
     files.
 

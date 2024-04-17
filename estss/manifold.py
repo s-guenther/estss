@@ -65,6 +65,7 @@ instructions.
 from collections import abc
 from copy import copy
 from functools import reduce
+from pathlib import Path
 from random import choices, uniform, shuffle
 
 import numpy as np
@@ -75,13 +76,16 @@ from scipy import interpolate
 from estss import util
 
 
+_DATAPATH = Path(__file__).parent.parent / 'data'
+
+
 # ##
 # ## Top Level Functions
 # ##
 # ## ##########################################################################
 
-def get_manifold_ts(df_files=('data/manifold_ts_only_neg.pkl',
-                              'data/manifold_ts_only_posneg.pkl')):
+def get_manifold_ts(df_files=(_DATAPATH / 'manifold_ts_only_neg.pkl',
+                              _DATAPATH / 'manifold_ts_only_posneg.pkl')):
     """Load manifolded time series data saved as pickled pandas dataframes.
 
     Loads 2 dataframes, returns as tuple. The first contains only time
@@ -113,7 +117,7 @@ def get_manifold_ts(df_files=('data/manifold_ts_only_neg.pkl',
     return [pd.read_pickle(file) for file in df_files]
 
 
-def compute_manifold_ts(df_init='data/init_ts.pkl', seed=42):
+def compute_manifold_ts(df_init=_DATAPATH / 'init_ts.pkl', seed=42):
     """Computes manifolded time series dataframes from an initial time
     series dataframe.
 
@@ -168,8 +172,8 @@ def compute_manifold_ts(df_init='data/init_ts.pkl', seed=42):
     return df_exp_neg, df_exp_posneg, str_combined
 
 
-def manifold(df_init='data/init_ts.pkl', kind='only_neg', seed=42,
-             save_to_disk='data/exp_ts'):
+def manifold(df_init=_DATAPATH / 'init_ts.pkl', kind='only_neg', seed=42,
+             save_to_disk=_DATAPATH / 'exp_ts'):
     """Computes a manifolded time series data frame from an initial time
     series dataframe.
 
@@ -239,7 +243,7 @@ def manifold(df_init='data/init_ts.pkl', kind='only_neg', seed=42,
     return df_exp, str_rec, str_mod
 
 
-def recombine(df_ts='data/init_ts.pkl', nout_concat=2 ** 13, nout_spos=2 ** 15,
+def recombine(df_ts=_DATAPATH / 'init_ts.pkl', nout_concat=2 ** 13, nout_spos=2 ** 15,
               kwargs_concat=None, kwargs_spos=None):
     """Takes a time series dataframe and recombines the timeseries via
     concatenation and superposition.
@@ -310,7 +314,7 @@ def recombine(df_ts='data/init_ts.pkl', nout_concat=2 ** 13, nout_spos=2 ** 15,
     return df_merged, strings
 
 
-def modify(df_ts='data/recombined_ts.pkl', nout_per_nin=8, kwargs_mod=None):
+def modify(df_ts=_DATAPATH / 'recombined_ts.pkl', nout_per_nin=8, kwargs_mod=None):
     """Takes a time series dataframe and modifies the time series within by
     randomly generated signal processing chains.
 
@@ -332,7 +336,7 @@ def modify(df_ts='data/recombined_ts.pkl', nout_per_nin=8, kwargs_mod=None):
         and loaded.
         If None is passed, recombine() is executed with default parameters
         and the resulting dataframe is used.
-    nout_per_nin : int, default: 16
+    nout_per_nin : int, default: 8
         Number of modifications generated for each input time series in `df_ts`
     kwargs_mod : dict or None, default None
         kwargs dict passed to _sig_proc_chain_strings().
@@ -358,7 +362,11 @@ def modify(df_ts='data/recombined_ts.pkl', nout_per_nin=8, kwargs_mod=None):
 
     n_in = df_ts.columns.size
     spc_strings = _sig_proc_chain_strings(nout_per_nin, n_in, **kwargs_mod)
-    df_spc = _sig_proc_chain(spc_strings, df_ts)
+    if 'modkeydef' in kwargs_mod:
+        mkdef = kwargs_mod['modkeydef']
+    else:
+        mkdef = None
+    df_spc = _sig_proc_chain(spc_strings, df_ts, modkeydef=mkdef)
     return df_spc, spc_strings
 
 
@@ -888,13 +896,13 @@ def _single_spc_string(ts_id, modkeydef):
     return str(ts_id) + ' |> ' + ' | '.join(mod_key_list)
 
 
-def _sig_proc_chain(spc_strings, df_ts):
+def _sig_proc_chain(spc_strings, df_ts, modkeydef=None):
     """Takes a list of strings `spc_strings` from the function
     _sig_proc_chain_strings() and a time series dataframe `df_ts` and
     generates time series modified by the specified signal processing chains
     by passing each string to _single_sig_proc_chain_from_string() and
     merging the results to a single data frame."""
-    all_spc = [_single_sig_proc_chain_from_string(spcs, df_ts)
+    all_spc = [_single_sig_proc_chain_from_string(spcs, df_ts, modkeydef)
                for spcs in spc_strings]
     all_spc = np.stack(all_spc, axis=1)
     return pd.DataFrame(all_spc)
@@ -908,7 +916,7 @@ def _single_sig_proc_chain_from_string(spc_string, df_ts, modkeydef=None):
     if modkeydef is None:
         modkeydef = copy(_MODKEYDEF)
     ts_id, spc_string = spc_string.split(' |> ')
-    ts = df_ts[int(ts_id)]
+    ts = df_ts.iloc[:, int(ts_id)]
     # split spc_string (remainder) into separate parts
     fcns, paras = [], []
     for part in spc_string.split(' | '):

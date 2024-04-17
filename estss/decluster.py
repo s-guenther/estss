@@ -65,6 +65,7 @@ Note:
 
 
 import copy
+from pathlib import Path
 import pickle
 import random
 from warnings import warn
@@ -82,7 +83,11 @@ from estss import manifold, features, dimred, util, analyze
 # ##
 # ## ##########################################################################
 
-def get_declustered_sets(file='data/declustered_sets.pkl'):
+_DECLUSTER_SETS_FILE = \
+        Path(__file__).parent.parent / 'data' / 'declustered_sets.pkl'
+
+
+def get_declustered_sets(file=_DECLUSTER_SETS_FILE):
     """Loads declustered sets of data from a specified pickle file.
 
     This function reads a file containing precomputed declustered sets of data,
