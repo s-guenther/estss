@@ -35,7 +35,7 @@ from estss import util
 _DATAPATH = Path(__file__).parent.parent / 'data'
 
 
-def get_init_ts(df_file=_DATAPATH / 'init_ts.pkl':
+def get_init_ts(df_file=_DATAPATH / 'init_ts.pkl'):
     """Load initial time series data saved as a pickled pandas dataframe.
 
     The dataframe is an nxm array with m being the number of time series and n
