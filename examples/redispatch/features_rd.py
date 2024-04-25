@@ -1,4 +1,8 @@
 #!/usr/bin/env python3
+
+from pathlib import Path
+from os import listdir
+from os.path import isfile, join
 import pandas as pd
 
 import estss
@@ -24,9 +28,50 @@ def compute_features(mani_paths=MANIFOLD_PATHS, feat_paths=FEAT_PATHS):
     return None
 
 
-def merge_features(feat_paths=FEAT_PATHS, save=False):
+def merge_features(feat_paths=FEAT_PATHS):
     df_list = [pd.read_pickle(fpath) for fpath in feat_paths]
     df_feat = pd.concat(df_list, axis=0, ignore_index=True)
-    if save:
-        df_feat.to_pickle(save)
     return df_feat
+
+
+def feature_list_from_path(path=None):
+    if path is None:
+        path = Path(__file__).parent / 'feat'
+    feat_list = [path / f for f in listdir(path)
+                 if isfile(path / f)]
+    feat_list.sort()
+    return feat_list
+
+
+def dim_red_features(df_feat, threshold=0.5):
+    feat_to_drop = [
+        'ami_timescale',
+        'low_freq_power',
+        'stl_spikiness',
+        'bocp_conf_max',
+        'max',
+        'median',
+        'min',
+        'ecdf01_norm',
+        'ecdf05_norm',
+        'ecdf20_norm',
+        'median_of_signed_diff',
+        'median_diff_from_mean',
+        'median_of_abs_diff',
+        'peak2peak',
+        'slope',
+        'freq_slope',
+        'mean_2nd_diff',
+        'fund_freq',
+        'mean_of_signed_diff',
+        'stl_trough',
+        'stl_peak',
+        'loc_of_last_min',
+    ]
+    df_dropped = df_feat.drop(feat_to_drop, axis='columns')
+    df_space = estss.dimred.raw_feature_array_to_feature_space(df_dropped)
+    corr_mat, cinfo = \
+        estss.dimred.hierarchical_corr_mat(df_space, threshold=threshold)
+    choose_dim = estss.dimred.get_first_name_per_cluster(cinfo['cluster'])
+    df_space2 = df_space[list(choose_dim)]
+    return df_space2, corr_mat, cinfo

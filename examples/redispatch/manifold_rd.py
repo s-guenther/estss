@@ -76,6 +76,8 @@ def manifold(df):
     del df_merged
     del pt2
     filecounter = 3
+    # TODO FIXME in this loop, the calculated df `df_out` does not have the
+    #  correct ts ids encoded in the columns. This is fixed manually afterwards
     for _ in range(3):
         for file in base_save_paths:
             print(f'    Processing File {filecounter}')

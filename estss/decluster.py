@@ -344,6 +344,8 @@ def decluster_chain(df_feat_norm, set_sizes=(2048, 512, 128, 32), seed=None):
 
     print('\n# ## Sort Sets')
     sets = _sort_sets(sets)
+
+    print('\n# ## ... done')
     return sets
 
 
@@ -386,7 +388,7 @@ def _sort_sets(in_sets):
         #                  ascending=[False, False, True, True],
         #                  inplace=True)
         # sets[ii] = set_.drop(columns=['set_cluster', 'mean_cluster', 'ind'])
-        set_['skew_cluster'] = pd.cut(set_['share_below_mean'],
+        set_['skew_cluster'] = pd.cut(set_['arv'],
                                       bins=np.linspace(0, 1, 11),
                                       labels=range(10),
                                       include_lowest=True)

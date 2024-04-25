@@ -261,7 +261,7 @@ def heterogeneity(df_feat, bins=10, as_histarray=False):
 
 
 def plot_nd_hist(df_feat, ax=None, bins=10, title='', colorbar=False,
-                 xticks=False, ndigits=3, as_histarray=False,
+                 xticks=False, yticks=True, ndigits=3, as_histarray=False,
                  gridlinewidth=3, cmap='Greys', norm=None):
     """Generates a plot of a multidimensional histogram (nd-hist) from a
     feature array.
@@ -290,6 +290,8 @@ def plot_nd_hist(df_feat, ax=None, bins=10, title='', colorbar=False,
         Whether to add a colorbar to the plot.
     xticks : bool, default: False
         Whether to display x-axis tick labels.
+    yticks : bool, default: True
+        Whether to display y-axis tick labels.
     ndigits : int, default: 3
         Number of decimal places for labels in each bin.
     as_histarray : bool, default: False
@@ -344,8 +346,10 @@ def plot_nd_hist(df_feat, ax=None, bins=10, title='', colorbar=False,
                 ax.text(jj, ii, f'{histarray.iloc[ii, jj]:.{ndigits}f}',
                         ha="center", va="center", color=color, clip_on=True)
     # rewrite x,y ticks
-    ax.set_yticks(range(dim),
-                  labels=names)
+    if yticks:
+        ax.set_yticks(range(dim), labels=names)
+    else:
+        ax.set_yticks([])
     if xticks:
         ax.set_xticks(np.arange(bins + 1) - 0.5,
                       labels=[f'{x:.2f}' for x in np.linspace(0, 1, bins + 1)])
@@ -353,7 +357,7 @@ def plot_nd_hist(df_feat, ax=None, bins=10, title='', colorbar=False,
         ax.set_xticks([])
     # Add title
     tstring = (
-        (f'{title}, Heterogenity = '
+        (f'{title}, Heterogeneity = '
          f'{heterogeneity(histarray, as_histarray=True):.4f}')
         .strip(', ')
     )

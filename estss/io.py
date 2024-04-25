@@ -21,6 +21,7 @@ For more information on the data, see the `_README` variable in the module.
 """
 
 import itertools as it
+from pathlib import Path
 
 import pandas as pd
 
@@ -111,7 +112,6 @@ Institute of Electric Power Systems\\
 Electric Energy Storage Systems Section
 """
 
-from pathlib import Path
 
 _SAVEPATH = Path(__file__).parent.parent / 'data' / 'csvexport/'
 _FIELDNAMES = ['features', 'ts', 'norm_space', 'info']
@@ -139,7 +139,7 @@ def to_csv(sets=None, savepath=_SAVEPATH):
         to a field name, and each value is a dictionary where keys are sizes
         and values are data frames. If None, the declustered data sets are
         obtained by default.
-    savepath : str
+    savepath : str, Path
         The base path where the CSV files will be saved. Each file is named
         following the pattern '{field}_{size}.csv'.
 

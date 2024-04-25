@@ -243,8 +243,8 @@ def manifold(df_init=_DATAPATH / 'init_ts.pkl', kind='only_neg', seed=42,
     return df_exp, str_rec, str_mod
 
 
-def recombine(df_ts=_DATAPATH / 'init_ts.pkl', nout_concat=2 ** 13, nout_spos=2 ** 15,
-              kwargs_concat=None, kwargs_spos=None):
+def recombine(df_ts=_DATAPATH / 'init_ts.pkl', nout_concat=2 ** 13,
+              nout_spos=2 ** 15, kwargs_concat=None, kwargs_spos=None):
     """Takes a time series dataframe and recombines the timeseries via
     concatenation and superposition.
 
@@ -314,7 +314,8 @@ def recombine(df_ts=_DATAPATH / 'init_ts.pkl', nout_concat=2 ** 13, nout_spos=2 
     return df_merged, strings
 
 
-def modify(df_ts=_DATAPATH / 'recombined_ts.pkl', nout_per_nin=8, kwargs_mod=None):
+def modify(df_ts=_DATAPATH / 'recombined_ts.pkl',
+           nout_per_nin=8, kwargs_mod=None):
     """Takes a time series dataframe and modifies the time series within by
     randomly generated signal processing chains.
 

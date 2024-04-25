@@ -90,7 +90,7 @@ procedure seems to work without errors in use:
     mamba create python=3.8 -n estss
     mamba activate estss
     mamba install numpy pandas convertdate lunarcalendar holidays=0.23 tqdm pystan=2.19.1.1 fbprophet=0.7.1 packaging=21.3 kats=0.2.0 pycatch22 tsfresh ipython -c conda-forge
-    pip install tsfel
+    pip install tsfel==0.1.5
 
 So, clone the repository, add it to the Python Path, e.g. add to `.bashrc`
 
